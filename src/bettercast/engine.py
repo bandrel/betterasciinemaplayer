@@ -69,7 +69,7 @@ class PlaybackEngine:
     def build_search_index(self) -> None:
         screen = pyte.Screen(self.recording.header.width, self.recording.header.height)
         stream = pyte.Stream(screen)
-        self._search_index = []
+        index: list[tuple[float, str, str]] = []
         prev_text = ""
         for event in self.recording.events:
             if event.type == "o":
@@ -89,8 +89,9 @@ class PlaybackEngine:
                         lines.append("".join(line_chars))
                     text = "\n".join(lines)
                 if text != prev_text:
-                    self._search_index.append((event.time, text, text.lower()))
+                    index.append((event.time, text, text.lower()))
                     prev_text = text
+        self._search_index = index
 
     def next_match(self, query: str) -> float | None:
         if not query:
