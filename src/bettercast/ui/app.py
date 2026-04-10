@@ -135,8 +135,10 @@ class BettercastApp(App):
                 self._refresh_display()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        self._search_query = event.value
         search = self.query_one("#search", SearchOverlay)
+        if not search.display:
+            return
+        self._search_query = event.value
         search.display = False
         self._terminal.focus()
         if self._search_query:
@@ -147,9 +149,10 @@ class BettercastApp(App):
 
     def on_input_changed(self, event: Input.Changed) -> None:
         search = self.query_one("#search", SearchOverlay)
-        if search.display:
-            count = self.engine.count_matches(event.value)
-            search.update_match_count(count)
+        if not search.display:
+            return
+        count = self.engine.count_matches(event.value)
+        search.update_match_count(count)
 
     # --- Help ---
 
