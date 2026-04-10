@@ -31,14 +31,14 @@ class V2Parser:
             line = line.strip()
             if not line:
                 continue
-            raw = json.loads(line)
             try:
+                raw = json.loads(line)
                 events.append(Event(
                     time=float(raw[0]),
                     type=str(raw[1]),
                     data=str(raw[2]),
                 ))
-            except (IndexError, KeyError, TypeError) as e:
+            except (json.JSONDecodeError, IndexError, KeyError, TypeError) as e:
                 raise ValueError(f"Malformed event line: {line!r}") from e
 
         events.sort(key=lambda e: e.time)
