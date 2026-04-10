@@ -15,13 +15,11 @@ class V2Parser:
         return self._parse_stream(source)
 
     def _parse_stream(self, stream: TextIO) -> Recording:
-        content = stream.read().strip()
-        if not content:
+        first_line = stream.readline().strip()
+        if not first_line:
             raise ValueError("Empty cast file")
 
-        lines = content.split("\n")
-
-        header_data = json.loads(lines[0])
+        header_data = json.loads(first_line)
         version = header_data.get("version")
         if version != 2:
             raise ValueError(f"Unsupported version: {version}")
@@ -29,7 +27,7 @@ class V2Parser:
             raise ValueError("Missing required header fields: width, height")
 
         events: list[Event] = []
-        for line in lines[1:]:
+        for line in stream:
             line = line.strip()
             if not line:
                 continue
