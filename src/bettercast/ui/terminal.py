@@ -37,7 +37,7 @@ def char_to_style(char) -> Style:
     )
 
 
-class TerminalDisplay(Static):
+class TerminalDisplay(Static, can_focus=True):
     DEFAULT_CSS = """
     TerminalDisplay {
         height: 1fr;
