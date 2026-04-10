@@ -14,7 +14,7 @@ class PlaybackEngine:
         self.speed: float = 1.0
         self.playing: bool = False
         self._event_index: int = 0
-        self._search_index: list[tuple[float, str]] = []
+        self._search_index: list[tuple[float, str, str]] = []
 
     @property
     def duration(self) -> float:
@@ -74,17 +74,30 @@ class PlaybackEngine:
         for event in self.recording.events:
             if event.type == "o":
                 stream.feed(event.data)
-                text = "\n".join(screen.display)
+                try:
+                    text = "\n".join(screen.display)
+                except IndexError:
+                    # pyte's display property crashes on Char entries with
+                    # empty data (from certain escape sequences). Extract
+                    # text directly from the buffer instead.
+                    lines = []
+                    for row in range(screen.lines):
+                        line_chars = []
+                        for col in range(screen.columns):
+                            data = screen.buffer[row][col].data
+                            line_chars.append(data if data else " ")
+                        lines.append("".join(line_chars))
+                    text = "\n".join(lines)
                 if text != prev_text:
-                    self._search_index.append((event.time, text))
+                    self._search_index.append((event.time, text, text.lower()))
                     prev_text = text
 
     def next_match(self, query: str) -> float | None:
         if not query:
             return None
         query_lower = query.lower()
-        for time, text in self._search_index:
-            if time > self.position and query_lower in text.lower():
+        for time, text, text_lower in self._search_index:
+            if time > self.position and query_lower in text_lower:
                 return time
         return None
 
@@ -92,8 +105,8 @@ class PlaybackEngine:
         if not query:
             return None
         query_lower = query.lower()
-        for time, text in reversed(self._search_index):
-            if time < self.position and query_lower in text.lower():
+        for time, text, text_lower in reversed(self._search_index):
+            if time < self.position and query_lower in text_lower:
                 return time
         return None
 
@@ -101,4 +114,4 @@ class PlaybackEngine:
         if not query:
             return 0
         query_lower = query.lower()
-        return sum(1 for _, text in self._search_index if query_lower in text.lower())
+        return sum(1 for _, _, text_lower in self._search_index if query_lower in text_lower)
