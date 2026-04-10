@@ -42,7 +42,9 @@ class V2Parser:
 
         events.sort(key=lambda e: e.time)
 
-        duration = header_data.get("duration") or (events[-1].time if events else 0.0)
+        duration = header_data.get("duration")
+        if duration is None:
+            duration = events[-1].time if events else 0.0
 
         header = CastHeader(
             version=header_data["version"],
