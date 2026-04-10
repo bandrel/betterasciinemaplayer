@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Input
@@ -52,11 +54,15 @@ class BettercastApp(App):
         self._refresh_display()
         self._progress_bar = self.query_one("#progress", PlaybackProgressBar)
         self._progress_bar.duration = self.engine.duration
+        self._last_tick_time = time.monotonic()
         self._timer = self.set_interval(1 / 30, self._tick)
         self._terminal.focus()
 
     def _tick(self) -> None:
-        changed = self.engine.advance(1 / 30)
+        now = time.monotonic()
+        actual_dt = now - self._last_tick_time
+        self._last_tick_time = now
+        changed = self.engine.advance(actual_dt)
         if changed:
             self._refresh_display()
         self._progress_bar.position = self.engine.position
