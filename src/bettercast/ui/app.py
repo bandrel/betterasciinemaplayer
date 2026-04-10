@@ -47,7 +47,7 @@ class BettercastApp(App):
         yield HelpOverlay(id="help")
 
     def on_mount(self) -> None:
-        self.engine.build_search_index()
+        self.run_worker(self.engine.build_search_index, thread=True)
         self._refresh_display()
         self._progress_bar = self.query_one("#progress", PlaybackProgressBar)
         self._progress_bar.duration = self.engine.duration
