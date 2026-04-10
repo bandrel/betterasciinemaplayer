@@ -132,6 +132,7 @@ class BettercastApp(App):
         self._search_query = event.value
         search = self.query_one("#search", SearchOverlay)
         search.display = False
+        self.query_one("#terminal").focus()
         if self._search_query:
             match_time = self.engine.next_match(self._search_query)
             if match_time is not None:
