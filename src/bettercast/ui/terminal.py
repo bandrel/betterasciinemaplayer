@@ -23,10 +23,17 @@ def pyte_color_to_rich(color: str) -> str | None:
     return color
 
 
+_style_cache: dict[tuple, Style] = {}
+
+
 def char_to_style(char) -> Style:
+    key = (char.fg, char.bg, char.bold, char.italics, char.underscore, char.strikethrough, char.reverse)
+    style = _style_cache.get(key)
+    if style is not None:
+        return style
     fg = pyte_color_to_rich(char.fg)
     bg = pyte_color_to_rich(char.bg)
-    return Style(
+    style = Style(
         color=fg,
         bgcolor=bg,
         bold=char.bold if char.bold else None,
@@ -35,6 +42,8 @@ def char_to_style(char) -> Style:
         strike=char.strikethrough if char.strikethrough else None,
         reverse=char.reverse if char.reverse else None,
     )
+    _style_cache[key] = style
+    return style
 
 
 class TerminalDisplay(Static, can_focus=True):
