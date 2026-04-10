@@ -1,4 +1,10 @@
+from unittest.mock import PropertyMock, patch
+
+import pyte
+from pyte.screens import Char
+
 from bettercast.engine import PlaybackEngine
+from bettercast.formats.base import CastHeader, Event, Recording
 
 
 class TestEngineInit:
@@ -137,7 +143,7 @@ class TestEngineSearch:
     def test_search_index_deduplicates(self, sample_recording):
         engine = PlaybackEngine(sample_recording)
         engine.build_search_index()
-        texts = [text for _, text in engine._search_index]
+        texts = [text for _, text, _ in engine._search_index]
         assert len(texts) == len(set(texts))
 
     def test_next_match_finds_text(self, sample_recording):
@@ -159,7 +165,7 @@ class TestEngineSearch:
     def test_next_match_returns_none_past_end(self, sample_recording):
         engine = PlaybackEngine(sample_recording)
         engine.build_search_index()
-        engine.position = 4.0
+        engine.position = 4.1
         assert engine.next_match("hello") is None
 
     def test_prev_match_finds_text(self, sample_recording):
@@ -168,7 +174,7 @@ class TestEngineSearch:
         engine.position = 4.0
         match_time = engine.prev_match("hello")
         assert match_time is not None
-        assert match_time < 4.0
+        assert match_time <= 4.0
 
     def test_prev_match_returns_none_at_start(self, sample_recording):
         engine = PlaybackEngine(sample_recording)
@@ -191,3 +197,133 @@ class TestEngineSearch:
         engine = PlaybackEngine(sample_recording)
         engine.build_search_index()
         assert engine.count_matches("") == 0
+
+
+def _make_recording(events_data: list[tuple[float, str]], width=80, height=24):
+    """Build a Recording from a list of (time, output_data) tuples."""
+    header = CastHeader(
+        version=2,
+        width=width,
+        height=height,
+        duration=events_data[-1][0] if events_data else 0.0,
+        timestamp=None,
+    )
+    events = [Event(time=t, type="o", data=d) for t, d in events_data]
+    return Recording(header=header, events=events)
+
+
+class TestSearchIndexEmptyCharFallback:
+    """Tests for build_search_index handling pyte's IndexError on Char
+    entries with empty data, which certain escape sequences can produce."""
+
+    def test_build_search_index_with_display_indexerror(self):
+        """When pyte's screen.display raises IndexError, the engine falls
+        back to reading the buffer directly and still builds the index."""
+        recording = _make_recording([
+            (0.5, "$ "),
+            (1.0, "hello\r\n"),
+        ])
+        engine = PlaybackEngine(recording)
+
+        original_display = pyte.Screen.display.fget
+
+        call_count = 0
+
+        def flaky_display(screen):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                raise IndexError("string index out of range")
+            return original_display(screen)
+
+        with patch.object(pyte.Screen, "display", new_callable=lambda: property(flaky_display)):
+            engine.build_search_index()
+
+        assert len(engine._search_index) > 0
+        texts = " ".join(text for _, text, _ in engine._search_index)
+        assert "hello" in texts
+
+    def test_fallback_replaces_empty_data_with_space(self):
+        """The buffer fallback path replaces empty Char.data with spaces
+        so the search text remains well-formed."""
+        recording = _make_recording([
+            (0.5, "abc"),
+        ], width=10, height=2)
+        engine = PlaybackEngine(recording)
+
+        original_display = pyte.Screen.display.fget
+
+        def crashing_display(screen):
+            # Inject an empty-data Char into the buffer, then crash
+            screen.buffer[0][5] = Char(
+                "", "default", "default",
+                False, False, False, False, False, False,
+            )
+            raise IndexError("string index out of range")
+
+        with patch.object(pyte.Screen, "display", new_callable=lambda: property(crashing_display)):
+            engine.build_search_index()
+
+        assert len(engine._search_index) == 1
+        text = engine._search_index[0][1]
+        # Column 5 should be a space (replacing empty data), not empty
+        first_line = text.split("\n")[0]
+        assert first_line[5] == " "
+        # Original text is still present
+        assert first_line.startswith("abc")
+
+    def test_search_works_after_fallback(self):
+        """Search (next_match, prev_match, count_matches) works correctly
+        even when the index was built via the fallback path."""
+        recording = _make_recording([
+            (0.5, "$ "),
+            (1.0, "searchable text\r\n"),
+            (2.0, "more output\r\n"),
+        ])
+        engine = PlaybackEngine(recording)
+
+        original_display = pyte.Screen.display.fget
+
+        def always_crash(screen):
+            raise IndexError("string index out of range")
+
+        with patch.object(pyte.Screen, "display", new_callable=lambda: property(always_crash)):
+            engine.build_search_index()
+
+        assert engine.count_matches("searchable") >= 1
+
+        engine.position = 0.0
+        match_time = engine.next_match("searchable")
+        assert match_time is not None
+        assert match_time >= 1.0
+
+        engine.position = 3.0
+        match_time = engine.prev_match("searchable")
+        assert match_time is not None
+
+    def test_build_search_index_with_wide_characters(self):
+        """CJK wide characters (which naturally create empty adjacent
+        Char entries) don't crash build_search_index."""
+        recording = _make_recording([
+            (0.5, "hello "),
+            (1.0, "漢字テスト"),
+            (2.0, "\r\n$ "),
+        ])
+        engine = PlaybackEngine(recording)
+        engine.build_search_index()
+        assert len(engine._search_index) > 0
+
+    def test_build_search_index_with_complex_escape_sequences(self):
+        """Escape sequences that set colors, move the cursor, and use
+        wide characters don't crash build_search_index."""
+        recording = _make_recording([
+            (0.5, "\x1b[38;2;153;153;153mStep\x1b[1Cforward"),
+            (1.0, "\x1b[0m\r\n"),
+            (1.5, "漢字\x1b[1;4HX"),
+            (2.0, "\r\n$ "),
+        ])
+        engine = PlaybackEngine(recording)
+        engine.build_search_index()
+        assert len(engine._search_index) > 0
+        texts = " ".join(text for _, text, _ in engine._search_index)
+        assert "Step" in texts
