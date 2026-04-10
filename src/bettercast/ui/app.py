@@ -47,12 +47,13 @@ class BettercastApp(App):
         yield HelpOverlay(id="help")
 
     def on_mount(self) -> None:
+        self._terminal = self.query_one("#terminal", TerminalDisplay)
         self.run_worker(self.engine.build_search_index, thread=True)
         self._refresh_display()
         self._progress_bar = self.query_one("#progress", PlaybackProgressBar)
         self._progress_bar.duration = self.engine.duration
         self._timer = self.set_interval(1 / 30, self._tick)
-        self.query_one("#terminal").focus()
+        self._terminal.focus()
 
     def _tick(self) -> None:
         changed = self.engine.advance(1 / 30)
@@ -63,8 +64,7 @@ class BettercastApp(App):
         self._progress_bar.speed = self.engine.speed
 
     def _refresh_display(self) -> None:
-        terminal = self.query_one("#terminal", TerminalDisplay)
-        terminal.update_from_engine(self.engine)
+        self._terminal.update_from_engine(self.engine)
 
     # --- Playback actions ---
 
@@ -132,7 +132,7 @@ class BettercastApp(App):
         self._search_query = event.value
         search = self.query_one("#search", SearchOverlay)
         search.display = False
-        self.query_one("#terminal").focus()
+        self._terminal.focus()
         if self._search_query:
             match_time = self.engine.next_match(self._search_query)
             if match_time is not None:
