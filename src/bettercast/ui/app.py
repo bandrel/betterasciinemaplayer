@@ -19,7 +19,7 @@ class BettercastApp(App):
     """
 
     BINDINGS = [
-        Binding("space", "toggle_play", "Play/Pause", priority=True),
+        Binding("space", "toggle_play", "Play/Pause"),
         Binding("left", "seek_back", "Seek -5s"),
         Binding("right", "seek_forward", "Seek +5s"),
         Binding("shift+left", "seek_back_far", "Seek -30s"),
@@ -28,7 +28,7 @@ class BettercastApp(App):
         Binding("right_square_bracket", "speed_up", "Speed +0.5x"),
         Binding("home", "seek_start", "Start"),
         Binding("end", "seek_end", "End"),
-        Binding("slash", "open_search", "Search", priority=True),
+        Binding("slash", "open_search", "Search"),
         Binding("n", "next_match", "Next match"),
         Binding("N", "prev_match", "Prev match"),
         Binding("question_mark", "toggle_help", "Help"),
@@ -70,6 +70,8 @@ class BettercastApp(App):
     # --- Playback actions ---
 
     def action_toggle_play(self) -> None:
+        if self.query_one("#search", SearchOverlay).display:
+            return
         self.engine.toggle()
 
     def action_seek_back(self) -> None:
@@ -106,6 +108,8 @@ class BettercastApp(App):
 
     def action_open_search(self) -> None:
         search = self.query_one("#search", SearchOverlay)
+        if search.display:
+            return
         search.display = True
         search_input = search.query_one(Input)
         search_input.value = ""
