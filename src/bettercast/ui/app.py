@@ -49,8 +49,8 @@ class BettercastApp(App):
     def on_mount(self) -> None:
         self.engine.build_search_index()
         self._refresh_display()
-        progress = self.query_one("#progress", PlaybackProgressBar)
-        progress.duration = self.engine.duration
+        self._progress_bar = self.query_one("#progress", PlaybackProgressBar)
+        self._progress_bar.duration = self.engine.duration
         self._timer = self.set_interval(1 / 30, self._tick)
         self.query_one("#terminal").focus()
 
@@ -58,10 +58,9 @@ class BettercastApp(App):
         changed = self.engine.advance(1 / 30)
         if changed:
             self._refresh_display()
-        progress = self.query_one("#progress", PlaybackProgressBar)
-        progress.position = self.engine.position
-        progress.playing = self.engine.playing
-        progress.speed = self.engine.speed
+        self._progress_bar.position = self.engine.position
+        self._progress_bar.playing = self.engine.playing
+        self._progress_bar.speed = self.engine.speed
 
     def _refresh_display(self) -> None:
         terminal = self.query_one("#terminal", TerminalDisplay)
