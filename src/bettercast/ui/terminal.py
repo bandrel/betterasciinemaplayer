@@ -63,7 +63,8 @@ class TerminalDisplay(Static, can_focus=True):
             for col in range(screen.columns):
                 char = screen.buffer[row][col]
                 style = char_to_style(char)
-                output.append(char.data, style=style)
+                if char.data:
+                    output.append(char.data, style=style)
         return output
 
     def update_from_engine(self, engine: PlaybackEngine) -> None:
