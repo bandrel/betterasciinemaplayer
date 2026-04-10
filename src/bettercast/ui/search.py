@@ -42,3 +42,4 @@ class SearchOverlay(Horizontal):
     def action_dismiss(self) -> None:
         self.query_one(Input).value = ""
         self.display = False
+        self.app.query_one("#terminal").focus()
