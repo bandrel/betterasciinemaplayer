@@ -15,6 +15,7 @@ class PlaybackEngine:
         self.playing: bool = False
         self._event_index: int = 0
         self._search_index: list[tuple[float, str, str]] = []
+        self.idle_threshold: float = float("inf")
 
     @property
     def duration(self) -> float:
@@ -39,6 +40,12 @@ class PlaybackEngine:
         if not self.playing:
             return False
         virtual_dt = real_dt * self.speed
+        # Idle compression: if next event is beyond threshold, skip ahead
+        if self._event_index < len(self.recording.events):
+            next_event = self.recording.events[self._event_index]
+            gap = next_event.time - self.position
+            if gap > self.idle_threshold:
+                self.position = next_event.time - 0.5
         target = min(self.position + virtual_dt, self.duration)
         changed = False
         while self._event_index < len(self.recording.events):

@@ -1,0 +1,8 @@
+{"version": 2, "width": 80, "height": 24}
+[0.5, "o", "$ "]
+[1.0, "o", "echo start\r\n"]
+[1.5, "o", "start\r\n$ "]
+[6.0, "o", "echo after gap\r\n"]
+[6.5, "o", "after gap\r\n$ "]
+[7.0, "o", "echo end\r\n"]
+[7.5, "o", "end\r\n$ "]
