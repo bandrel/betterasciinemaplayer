@@ -374,3 +374,29 @@ class TestHelpOverlay:
             assert "Play/Pause" in text
             assert "Search" in text
             assert "Quit" in text
+
+
+# ── Loop mode ───────────────────────────────────────────────────────
+
+class TestLoopModeE2E:
+    @pytest.mark.asyncio
+    async def test_l_toggles_loop_mode(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.looping is False
+            await pilot.press("l")
+            assert engine.looping is True
+            await pilot.press("l")
+            assert engine.looping is False
+
+    @pytest.mark.asyncio
+    async def test_loop_icon_shows_in_progress_bar(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("l")
+            await pilot.pause()
+            progress = app.query_one("#progress", PlaybackProgressBar)
+            rendered = str(progress.render())
+            assert "\u27F3" in rendered
