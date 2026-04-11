@@ -31,6 +31,8 @@ class BettercastApp(App):
         Binding("slash", "open_search", "Search"),
         Binding("n", "next_match", "Next match"),
         Binding("N", "prev_match", "Prev match"),
+        Binding("full_stop", "step_forward", "Step forward"),
+        Binding("comma", "step_backward", "Step backward"),
         Binding("question_mark", "toggle_help", "Help"),
         Binding("q", "quit", "Quit"),
     ]
@@ -94,6 +96,14 @@ class BettercastApp(App):
 
     def action_speed_up(self) -> None:
         self.engine.set_speed(self.engine.speed + 0.5)
+
+    def action_step_forward(self) -> None:
+        self.engine.step_forward()
+        self._refresh_display()
+
+    def action_step_backward(self) -> None:
+        self.engine.step_backward()
+        self._refresh_display()
 
     def action_seek_start(self) -> None:
         self.engine.seek(0.0)
