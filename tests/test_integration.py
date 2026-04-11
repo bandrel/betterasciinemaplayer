@@ -691,6 +691,90 @@ class TestCopyTextE2E:
                 assert progress.flash_message == "Copied!"
 
 
+# ── Search match cycling regression tests ──────────────────────────
+
+
+class TestSearchMatchCycling:
+    """Regression tests: n/N and up/down must advance through matches."""
+
+    @pytest.mark.asyncio
+    async def test_n_advances_to_next_match(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await _wait_for_workers(app)
+            # "$" appears at multiple timestamps in the recording
+            await pilot.press("slash")
+            search_input = app.query_one("#search", SearchOverlay).query_one(Input)
+            search_input.value = "$"
+            await pilot.press("enter")
+            pos1 = engine.position
+            assert pos1 > 0.0
+            await pilot.press("n")
+            pos2 = engine.position
+            assert pos2 > pos1, f"n should advance: {pos2} > {pos1}"
+
+    @pytest.mark.asyncio
+    async def test_N_goes_to_prev_match(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await _wait_for_workers(app)
+            await pilot.press("slash")
+            search_input = app.query_one("#search", SearchOverlay).query_one(Input)
+            search_input.value = "$"
+            await pilot.press("enter")
+            # Advance to a later match
+            await pilot.press("n")
+            await pilot.press("n")
+            pos_forward = engine.position
+            await pilot.press("N")
+            pos_back = engine.position
+            assert pos_back < pos_forward, f"N should go back: {pos_back} < {pos_forward}"
+
+    @pytest.mark.asyncio
+    async def test_down_arrow_advances_match(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await _wait_for_workers(app)
+            await pilot.press("slash")
+            search_input = app.query_one("#search", SearchOverlay).query_one(Input)
+            search_input.value = "$"
+            await pilot.press("enter")
+            pos1 = engine.position
+            await pilot.press("down")
+            pos2 = engine.position
+            assert pos2 > pos1, f"down should advance: {pos2} > {pos1}"
+
+    @pytest.mark.asyncio
+    async def test_up_arrow_goes_to_prev_match(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await _wait_for_workers(app)
+            await pilot.press("slash")
+            search_input = app.query_one("#search", SearchOverlay).query_one(Input)
+            search_input.value = "$"
+            await pilot.press("enter")
+            await pilot.press("n")
+            await pilot.press("n")
+            pos_forward = engine.position
+            await pilot.press("up")
+            pos_back = engine.position
+            assert pos_back < pos_forward, f"up should go back: {pos_back} < {pos_forward}"
+
+    @pytest.mark.asyncio
+    async def test_indexing_indicator_clears(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await _wait_for_workers(app)
+            await pilot.pause(delay=0.1)
+            progress = app.query_one("#progress", PlaybackProgressBar)
+            assert progress.flash_message != "Indexing..."
+
+
 # ── Comprehensive keybinding E2E tests ─────────────────────────────
 # One test per keybinding to verify every shortcut works end-to-end.
 

@@ -6,6 +6,7 @@ import subprocess
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Input, Static
+from textual.worker import Worker, WorkerState
 
 from bettercast.engine import PlaybackEngine
 from bettercast.ui.bookmarks import BookmarkOverlay
@@ -81,12 +82,7 @@ class BettercastApp(App):
         if changed:
             self._refresh_display()
         if not self._search_ready:
-            if self._search_worker.is_finished:
-                self._search_ready = True
-                if self._progress_bar.flash_message == "Indexing...":
-                    self._progress_bar.flash_message = ""
-            else:
-                self._progress_bar.flash_message = "Indexing..."
+            self._progress_bar.flash_message = "Indexing..."
         self._progress_bar.position = self.engine.position
         self._progress_bar.playing = self.engine.playing
         self._progress_bar.speed = self.engine.speed
@@ -238,6 +234,14 @@ class BettercastApp(App):
         if time is not None:
             self.engine.seek(time)
             self._refresh_display()
+
+    # --- Worker events ---
+
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        if event.state == WorkerState.SUCCESS and not self._search_ready:
+            self._search_ready = True
+            if self._progress_bar.flash_message == "Indexing...":
+                self._progress_bar.flash_message = ""
 
     # --- Help ---
 

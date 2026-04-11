@@ -146,7 +146,7 @@ class PlaybackEngine:
             return None
         query_lower = query.lower()
         for time, text, text_lower in self._search_index:
-            if time >= self.position and query_lower in text_lower:
+            if time > self.position and query_lower in text_lower:
                 return time
         return None
 
@@ -155,7 +155,7 @@ class PlaybackEngine:
             return None
         query_lower = query.lower()
         for time, text, text_lower in reversed(self._search_index):
-            if time <= self.position and query_lower in text_lower:
+            if time < self.position and query_lower in text_lower:
                 return time
         return None
 
