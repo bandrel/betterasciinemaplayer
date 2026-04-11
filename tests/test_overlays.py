@@ -15,7 +15,7 @@ class TestHelpOverlay:
     def test_help_text_has_all_bindings(self):
         assert "Space" in HELP_TEXT
         assert "Home/End" in HELP_TEXT
-        assert "n / N" in HELP_TEXT
+        assert "n/N" in HELP_TEXT
         assert "?" in HELP_TEXT
         assert "q" in HELP_TEXT
 

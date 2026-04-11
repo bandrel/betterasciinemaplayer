@@ -37,6 +37,8 @@ class BettercastApp(App):
         Binding("slash", "open_search", "Search"),
         Binding("n", "next_match", "Next match"),
         Binding("N", "prev_match", "Prev match"),
+        Binding("down", "next_match", "Next match", show=False),
+        Binding("up", "prev_match", "Prev match", show=False),
         Binding("full_stop", "step_forward", "Step forward"),
         Binding("comma", "step_backward", "Step backward"),
         Binding("l", "toggle_loop", "Loop"),

@@ -14,7 +14,7 @@ HELP_TEXT = """\
 │ l          Toggle loop mode      │
 │ g          Go to timestamp       │
 │ /          Search                │
-│ n / N      Next/Prev match       │
+│ n/N or ↑/↓ Next/Prev match       │
 │ m          Add bookmark          │
 │ b          Bookmark list         │
 │ { / }      Prev/Next bookmark    │
