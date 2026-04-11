@@ -441,3 +441,22 @@ class TestLoopModeE2E:
             progress = app.query_one("#progress", PlaybackProgressBar)
             rendered = str(progress.render())
             assert "\u27F3" in rendered
+
+
+# ── Idle compression E2E ────────────────────────────────────────────
+
+class TestIdleCompressionE2E:
+    @pytest.mark.asyncio
+    async def test_idle_gap_is_compressed_during_playback(self):
+        from bettercast.formats.v2 import V2Parser
+        from pathlib import Path
+        parser = V2Parser()
+        recording = parser.parse(Path(__file__).parent / "fixtures" / "idle_gaps.cast")
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = 2.0
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            engine.seek(1.4)
+            engine.playing = True
+            await pilot.pause(delay=0.3)
+            assert engine.position > 5.0

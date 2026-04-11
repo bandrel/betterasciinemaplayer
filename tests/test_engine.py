@@ -305,6 +305,65 @@ def _make_recording(events_data: list[tuple[float, str]], width=80, height=24):
     return Recording(header=header, events=events)
 
 
+class TestIdleCompression:
+    def _make_idle_recording(self):
+        """Recording with a 4.5s idle gap between t=1.5 and t=6.0."""
+        return _make_recording([
+            (0.5, "$ "),
+            (1.0, "echo start\r\n"),
+            (1.5, "start\r\n$ "),
+            (6.0, "echo after gap\r\n"),
+            (6.5, "after gap\r\n$ "),
+            (7.0, "echo end\r\n"),
+            (7.5, "end\r\n$ "),
+        ])
+
+    def test_idle_threshold_defaults_to_infinity(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        assert engine.idle_threshold == float("inf")
+
+    def test_advance_skips_idle_gap(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = 2.0
+        engine.playing = True
+        engine.seek(1.5)
+        engine.playing = True
+        changed = engine.advance(0.1)
+        assert engine.position >= 5.5
+
+    def test_advance_does_not_skip_small_gap(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = 2.0
+        engine.playing = True
+        engine.seek(0.5)
+        engine.playing = True
+        engine.advance(0.1)
+        assert engine.position == 0.6
+
+    def test_no_compression_when_threshold_is_infinity(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = float("inf")
+        engine.playing = True
+        engine.seek(1.5)
+        engine.playing = True
+        engine.advance(0.1)
+        assert engine.position == 1.6
+
+    def test_custom_threshold(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = 5.0
+        engine.playing = True
+        engine.seek(1.5)
+        engine.playing = True
+        engine.advance(0.1)
+        assert engine.position == 1.6
+
+
 class TestSearchIndexEmptyCharFallback:
     """Tests for build_search_index handling pyte's IndexError on Char
     entries with empty data, which certain escape sequences can produce."""
