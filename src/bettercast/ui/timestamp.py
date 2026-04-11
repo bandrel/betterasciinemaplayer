@@ -28,6 +28,7 @@ def parse_timestamp(value: str) -> float | None:
 class TimestampOverlay(Horizontal):
     DEFAULT_CSS = """
     TimestampOverlay {
+        layer: overlay;
         dock: bottom;
         height: 1;
         display: none;

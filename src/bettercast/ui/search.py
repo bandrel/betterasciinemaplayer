@@ -8,6 +8,7 @@ from textual.widgets import Input, Static
 class SearchOverlay(Horizontal):
     DEFAULT_CSS = """
     SearchOverlay {
+        layer: overlay;
         dock: bottom;
         height: 1;
         display: none;
