@@ -50,17 +50,20 @@ class TerminalDisplay(Static, can_focus=True):
     DEFAULT_CSS = """
     TerminalDisplay {
         height: 1fr;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     """
 
     def render_engine_screen(self, engine: PlaybackEngine) -> Text:
         screen = engine.screen
+        # Clamp to visible width — truncate lines wider than the widget
+        visible_cols = min(screen.columns, self.size.width) if self.size.width > 0 else screen.columns
         output = Text()
         for row in range(screen.lines):
             if row > 0:
                 output.append("\n")
-            for col in range(screen.columns):
+            for col in range(visible_cols):
                 char = screen.buffer[row][col]
                 try:
                     style = char_to_style(char)
