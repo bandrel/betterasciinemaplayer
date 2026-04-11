@@ -9,6 +9,7 @@ from bettercast.ui.help import HelpOverlay
 from bettercast.ui.progress import PlaybackProgressBar
 from bettercast.ui.search import SearchOverlay
 from bettercast.ui.terminal import TerminalDisplay
+from bettercast.ui.timestamp import TimestampOverlay, parse_timestamp
 
 
 class BettercastApp(App):
@@ -31,6 +32,7 @@ class BettercastApp(App):
         Binding("slash", "open_search", "Search"),
         Binding("n", "next_match", "Next match"),
         Binding("N", "prev_match", "Prev match"),
+        Binding("g", "open_timestamp", "Go to time"),
         Binding("question_mark", "toggle_help", "Help"),
         Binding("q", "quit", "Quit"),
     ]
@@ -43,6 +45,7 @@ class BettercastApp(App):
     def compose(self) -> ComposeResult:
         yield TerminalDisplay(id="terminal")
         yield SearchOverlay(id="search")
+        yield TimestampOverlay(id="timestamp")
         yield PlaybackProgressBar(id="progress")
         yield HelpOverlay(id="help")
 
@@ -128,7 +131,28 @@ class BettercastApp(App):
                 self.engine.seek(match_time)
                 self._refresh_display()
 
+    def action_open_timestamp(self) -> None:
+        ts = self.query_one("#timestamp", TimestampOverlay)
+        if ts.display:
+            return
+        ts.display = True
+        ts_input = ts.query_one(Input)
+        ts_input.value = ""
+        ts_input.focus()
+
     def on_input_submitted(self, event: Input.Submitted) -> None:
+        timestamp = self.query_one("#timestamp", TimestampOverlay)
+
+        if timestamp.display:
+            timestamp.display = False
+            self._terminal.focus()
+            parsed = parse_timestamp(event.value)
+            if parsed is not None:
+                self.engine.seek(parsed)
+                self._refresh_display()
+            return
+
+        # Original search handling
         self._search_query = event.value
         search = self.query_one("#search", SearchOverlay)
         search.display = False
