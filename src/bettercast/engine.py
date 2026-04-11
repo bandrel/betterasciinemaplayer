@@ -48,7 +48,6 @@ class PlaybackEngine:
     def seek(self, time: float) -> None:
         time = max(0.0, min(time, self.duration))
         self.screen.reset()
-        self._stream = pyte.Stream(self.screen)
         self._event_index = 0
         for i, event in enumerate(self.recording.events):
             if event.time > time:
@@ -143,15 +142,11 @@ class PlaybackEngine:
                 continue
 
             # Fast buffer read — bypass screen.display property
-            lines = []
             buf = screen.buffer
-            for row in range(rows):
-                row_buf = buf[row]
-                line_chars = []
-                for col in range(cols):
-                    data = row_buf[col].data
-                    line_chars.append(data if data else " ")
-                lines.append("".join(line_chars))
+            lines = [
+                "".join(buf[row][col].data or " " for col in range(cols))
+                for row in range(rows)
+            ]
             text = "\n".join(lines)
 
             if text != prev_text:

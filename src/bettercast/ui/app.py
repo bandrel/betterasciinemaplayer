@@ -81,7 +81,7 @@ class BettercastApp(App):
         changed = self.engine.advance(1 / 30)
         if changed:
             self._refresh_display()
-        if not self._search_ready:
+        if not self._search_ready and self._progress_bar.flash_message != "Indexing...":
             self._progress_bar.flash_message = "Indexing..."
         pb = self._progress_bar
         pos = self.engine.position
