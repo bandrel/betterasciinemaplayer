@@ -19,7 +19,7 @@ HELP_TEXT = """\
 │ b          Bookmark list         │
 │ { / }      Prev/Next bookmark    │
 │ c          Copy screen text      │
-│ ?          Toggle help           │
+│ ?          Toggle HUD            │
 │ q          Quit                  │
 └──────────────────────────────────┘"""
 
@@ -29,10 +29,12 @@ class HelpOverlay(Static):
     HelpOverlay {
         layer: overlay;
         display: none;
-        content-align: center middle;
-        width: 100%;
-        height: 100%;
-        background: $surface 80%;
+        dock: right;
+        width: 38;
+        height: auto;
+        max-height: 100%;
+        background: $surface 85%;
+        padding: 0;
     }
     """
 
