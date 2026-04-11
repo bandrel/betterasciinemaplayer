@@ -15,6 +15,8 @@ class PlaybackEngine:
         self.playing: bool = False
         self._event_index: int = 0
         self._search_index: list[tuple[float, str, str]] = []
+        self.bookmarks: list[tuple[float, str]] = []
+        self._bookmark_counter: int = 0
 
     @property
     def duration(self) -> float:
@@ -116,3 +118,26 @@ class PlaybackEngine:
             return 0
         query_lower = query.lower()
         return sum(1 for _, _, text_lower in self._search_index if query_lower in text_lower)
+
+    def add_bookmark(self, time: float, label: str = "") -> None:
+        self._bookmark_counter += 1
+        if not label:
+            label = f"Bookmark {self._bookmark_counter}"
+        self.bookmarks.append((time, label))
+        self.bookmarks.sort(key=lambda b: b[0])
+
+    def remove_bookmark(self, index: int) -> None:
+        if 0 <= index < len(self.bookmarks):
+            self.bookmarks.pop(index)
+
+    def next_bookmark(self, from_time: float) -> float | None:
+        for time, _ in self.bookmarks:
+            if time > from_time:
+                return time
+        return None
+
+    def prev_bookmark(self, from_time: float) -> float | None:
+        for time, _ in reversed(self.bookmarks):
+            if time < from_time:
+                return time
+        return None

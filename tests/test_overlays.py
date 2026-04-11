@@ -1,3 +1,4 @@
+from bettercast.ui.bookmarks import BookmarkOverlay
 from bettercast.ui.help import HelpOverlay, HELP_TEXT
 from bettercast.ui.search import SearchOverlay
 
@@ -31,3 +32,52 @@ class TestSearchOverlay:
         # SearchOverlay CSS sets display: none by default
         # Verify the class has DEFAULT_CSS that references display
         assert "display: none" in SearchOverlay.DEFAULT_CSS
+
+
+class TestBookmarkOverlay:
+    def test_default_display_is_none(self):
+        assert "display: none" in BookmarkOverlay.DEFAULT_CSS
+
+    def test_has_dismiss_action(self):
+        overlay = BookmarkOverlay()
+        assert hasattr(overlay, "action_dismiss")
+
+    def test_update_bookmarks_stores_list(self):
+        overlay = BookmarkOverlay()
+        bookmarks = [(1.0, "Bookmark 1"), (3.0, "Bookmark 2")]
+        overlay.update_bookmarks(bookmarks)
+        assert overlay._bookmarks == bookmarks
+
+    def test_selected_index_clamps(self):
+        overlay = BookmarkOverlay()
+        overlay._selected = 5
+        overlay.update_bookmarks([(1.0, "only one")])
+        assert overlay._selected == 0
+
+    def test_move_up_decrements(self):
+        overlay = BookmarkOverlay()
+        overlay.update_bookmarks([(1.0, "a"), (2.0, "b")])
+        overlay._selected = 1
+        overlay.action_move_up()
+        assert overlay._selected == 0
+
+    def test_move_down_increments(self):
+        overlay = BookmarkOverlay()
+        overlay.update_bookmarks([(1.0, "a"), (2.0, "b")])
+        overlay._selected = 0
+        overlay.action_move_down()
+        assert overlay._selected == 1
+
+    def test_move_up_clamps_at_zero(self):
+        overlay = BookmarkOverlay()
+        overlay.update_bookmarks([(1.0, "a")])
+        overlay._selected = 0
+        overlay.action_move_up()
+        assert overlay._selected == 0
+
+    def test_move_down_clamps_at_end(self):
+        overlay = BookmarkOverlay()
+        overlay.update_bookmarks([(1.0, "a")])
+        overlay._selected = 0
+        overlay.action_move_down()
+        assert overlay._selected == 0

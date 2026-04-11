@@ -11,6 +11,7 @@ import pytest
 
 from bettercast.engine import PlaybackEngine
 from bettercast.ui.app import BettercastApp
+from bettercast.ui.bookmarks import BookmarkOverlay
 from bettercast.ui.help import HelpOverlay
 from bettercast.ui.progress import PlaybackProgressBar
 from bettercast.ui.search import SearchOverlay
@@ -374,3 +375,91 @@ class TestHelpOverlay:
             assert "Play/Pause" in text
             assert "Search" in text
             assert "Quit" in text
+
+
+# ── Bookmarks ───────────────────────────────────────────────────────
+
+
+class TestBookmarksE2E:
+    @pytest.mark.asyncio
+    async def test_m_adds_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("right")
+            await pilot.press("m")
+            assert len(engine.bookmarks) == 1
+            assert engine.bookmarks[0][0] == 4.0
+
+    @pytest.mark.asyncio
+    async def test_b_opens_bookmark_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("m")
+            bm = app.query_one("#bookmarks", BookmarkOverlay)
+            assert bm.display is False
+            await pilot.press("b")
+            assert bm.display is True
+
+    @pytest.mark.asyncio
+    async def test_bookmark_jump_via_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("right")
+            await pilot.press("left")
+            engine.add_bookmark(2.0)
+            await pilot.press("b")
+            await pilot.press("enter")
+            assert engine.position == 2.0
+
+    @pytest.mark.asyncio
+    async def test_curly_braces_jump_between_bookmarks(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            engine.add_bookmark(1.0)
+            engine.add_bookmark(3.0)
+            engine.seek(0.0)
+            await pilot.press("right_curly_bracket")
+            assert engine.position == 1.0
+            await pilot.press("right_curly_bracket")
+            assert engine.position == 3.0
+
+    @pytest.mark.asyncio
+    async def test_prev_bookmark_jump(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            engine.add_bookmark(1.0)
+            engine.add_bookmark(3.0)
+            engine.seek(4.0)
+            await pilot.press("left_curly_bracket")
+            assert engine.position == 3.0
+            await pilot.press("left_curly_bracket")
+            assert engine.position == 1.0
+
+    @pytest.mark.asyncio
+    async def test_delete_bookmark_from_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            engine.add_bookmark(1.0)
+            engine.add_bookmark(2.0)
+            await pilot.press("b")
+            await pilot.press("d")
+            assert len(engine.bookmarks) == 1
+            assert engine.bookmarks[0][0] == 2.0
+
+    @pytest.mark.asyncio
+    async def test_escape_closes_bookmark_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            engine.add_bookmark(1.0)
+            await pilot.press("b")
+            bm = app.query_one("#bookmarks", BookmarkOverlay)
+            assert bm.display is True
+            await pilot.press("escape")
+            assert bm.display is False
