@@ -25,6 +25,25 @@ class PlaybackEngine:
     def duration(self) -> float:
         return self.recording.header.duration
 
+    def resize(self, width: int, height: int) -> None:
+        self.screen.resize(height, width)
+        self._stream = pyte.Stream(self.screen)
+        # Re-seek to rebuild screen state at new dimensions
+        pos = self.position
+        self._event_index = 0
+        self.screen.reset()
+        self.screen.resize(height, width)
+        self._stream = pyte.Stream(self.screen)
+        for i, event in enumerate(self.recording.events):
+            if event.time > pos:
+                self._event_index = i
+                break
+            if event.type == "o":
+                self._stream.feed(event.data)
+        else:
+            self._event_index = len(self.recording.events)
+        self.position = pos
+
     def seek(self, time: float) -> None:
         time = max(0.0, min(time, self.duration))
         self.screen.reset()
