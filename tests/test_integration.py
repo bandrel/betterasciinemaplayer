@@ -15,6 +15,7 @@ from bettercast.ui.help import HelpOverlay
 from bettercast.ui.progress import PlaybackProgressBar
 from bettercast.ui.search import SearchOverlay
 from bettercast.ui.terminal import TerminalDisplay
+from bettercast.ui.timestamp import TimestampOverlay
 from textual.widgets import Input
 
 
@@ -489,3 +490,67 @@ class TestAutoRestartE2E:
             assert engine.playing is True
             # Position near 0 (timer tick may advance slightly)
             assert engine.position < 0.5
+
+
+# ── Jump to timestamp ───────────────────────────────────────────────
+
+class TestJumpToTimestampE2E:
+    @pytest.mark.asyncio
+    async def test_g_opens_timestamp_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            ts = app.query_one("#timestamp", TimestampOverlay)
+            assert ts.display is False
+            await pilot.press("g")
+            assert ts.display is True
+
+    @pytest.mark.asyncio
+    async def test_submit_valid_timestamp_seeks(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.position == 0.0
+            await pilot.press("g")
+            ts_input = app.query_one("#timestamp", TimestampOverlay).query_one(Input)
+            ts_input.value = "00:03"
+            await pilot.press("enter")
+            assert engine.position == 3.0
+
+    @pytest.mark.asyncio
+    async def test_submit_invalid_timestamp_closes_without_seeking(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.position == 0.0
+            await pilot.press("g")
+            ts_input = app.query_one("#timestamp", TimestampOverlay).query_one(Input)
+            ts_input.value = "abc"
+            await pilot.press("enter")
+            assert engine.position == 0.0
+            ts = app.query_one("#timestamp", TimestampOverlay)
+            assert ts.display is False
+
+    @pytest.mark.asyncio
+    async def test_escape_dismisses_timestamp_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("g")
+            ts = app.query_one("#timestamp", TimestampOverlay)
+            assert ts.display is True
+            await pilot.press("escape")
+            assert ts.display is False
+
+    @pytest.mark.asyncio
+    async def test_focus_returns_to_terminal_after_submit(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("g")
+            ts_input = app.query_one("#timestamp", TimestampOverlay).query_one(Input)
+            ts_input.value = "00:02"
+            await pilot.press("enter")
+            await pilot.pause()
+            terminal = app.query_one("#terminal", TerminalDisplay)
+            assert terminal.has_focus
