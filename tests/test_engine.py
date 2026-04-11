@@ -479,3 +479,91 @@ class TestSearchIndexEmptyCharFallback:
         assert len(engine._search_index) > 0
         texts = " ".join(text for _, text, _ in engine._search_index)
         assert "Step" in texts
+
+
+class TestBookmarks:
+    def test_bookmarks_initially_empty(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        assert engine.bookmarks == []
+
+    def test_add_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.5)
+        assert len(engine.bookmarks) == 1
+        assert engine.bookmarks[0] == (1.5, "Bookmark 1")
+
+    def test_add_bookmark_with_label(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.5, "interesting part")
+        assert engine.bookmarks[0] == (1.5, "interesting part")
+
+    def test_add_bookmark_auto_labels_increment(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(2.0)
+        engine.add_bookmark(3.0)
+        assert engine.bookmarks[0][1] == "Bookmark 1"
+        assert engine.bookmarks[1][1] == "Bookmark 2"
+        assert engine.bookmarks[2][1] == "Bookmark 3"
+
+    def test_remove_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(2.0)
+        engine.remove_bookmark(0)
+        assert len(engine.bookmarks) == 1
+        assert engine.bookmarks[0] == (2.0, "Bookmark 2")
+
+    def test_remove_bookmark_invalid_index_is_noop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.remove_bookmark(5)
+        assert len(engine.bookmarks) == 1
+
+    def test_next_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(3.0)
+        result = engine.next_bookmark(0.5)
+        assert result == 1.0
+
+    def test_next_bookmark_skips_current(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(3.0)
+        result = engine.next_bookmark(1.0)
+        assert result == 3.0
+
+    def test_next_bookmark_returns_none_past_all(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        result = engine.next_bookmark(2.0)
+        assert result is None
+
+    def test_prev_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(3.0)
+        result = engine.prev_bookmark(3.5)
+        assert result == 3.0
+
+    def test_prev_bookmark_skips_current(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(3.0)
+        result = engine.prev_bookmark(3.0)
+        assert result == 1.0
+
+    def test_prev_bookmark_returns_none_before_all(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(2.0)
+        result = engine.prev_bookmark(1.0)
+        assert result is None
+
+    def test_bookmarks_sorted_by_time(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(3.0)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(2.0)
+        times = [t for t, _ in engine.bookmarks]
+        assert times == [1.0, 2.0, 3.0]

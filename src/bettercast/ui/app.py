@@ -5,6 +5,7 @@ from textual.binding import Binding
 from textual.widgets import Input
 
 from bettercast.engine import PlaybackEngine
+from bettercast.ui.bookmarks import BookmarkOverlay
 from bettercast.ui.help import HelpOverlay
 from bettercast.ui.progress import PlaybackProgressBar
 from bettercast.ui.search import SearchOverlay
@@ -36,6 +37,10 @@ class BettercastApp(App):
         Binding("comma", "step_backward", "Step backward"),
         Binding("l", "toggle_loop", "Loop"),
         Binding("g", "open_timestamp", "Go to time"),
+        Binding("m", "add_bookmark", "Bookmark"),
+        Binding("b", "open_bookmarks", "Bookmarks list"),
+        Binding("left_curly_bracket", "prev_bookmark", "Prev bookmark"),
+        Binding("right_curly_bracket", "next_bookmark_jump", "Next bookmark"),
         Binding("question_mark", "toggle_help", "Help"),
         Binding("q", "quit", "Quit"),
     ]
@@ -49,6 +54,7 @@ class BettercastApp(App):
         yield TerminalDisplay(id="terminal")
         yield SearchOverlay(id="search")
         yield TimestampOverlay(id="timestamp")
+        yield BookmarkOverlay(id="bookmarks")
         yield PlaybackProgressBar(id="progress")
         yield HelpOverlay(id="help")
 
@@ -69,6 +75,7 @@ class BettercastApp(App):
         self._progress_bar.playing = self.engine.playing
         self._progress_bar.speed = self.engine.speed
         self._progress_bar.looping = self.engine.looping
+        self._progress_bar.bookmark_times = [t for t, _ in self.engine.bookmarks]
 
     def _refresh_display(self) -> None:
         self._terminal.update_from_engine(self.engine)
@@ -186,6 +193,31 @@ class BettercastApp(App):
 
     def action_toggle_loop(self) -> None:
         self.engine.looping = not self.engine.looping
+
+    # --- Bookmarks ---
+
+    def action_add_bookmark(self) -> None:
+        self.engine.add_bookmark(self.engine.position)
+
+    def action_open_bookmarks(self) -> None:
+        bm = self.query_one("#bookmarks", BookmarkOverlay)
+        if bm.display:
+            return
+        bm.update_bookmarks(self.engine.bookmarks)
+        bm.display = True
+        bm.focus()
+
+    def action_prev_bookmark(self) -> None:
+        time = self.engine.prev_bookmark(self.engine.position)
+        if time is not None:
+            self.engine.seek(time)
+            self._refresh_display()
+
+    def action_next_bookmark_jump(self) -> None:
+        time = self.engine.next_bookmark(self.engine.position)
+        if time is not None:
+            self.engine.seek(time)
+            self._refresh_display()
 
     # --- Help ---
 
