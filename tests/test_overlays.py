@@ -19,6 +19,15 @@ class TestHelpOverlay:
         assert "?" in HELP_TEXT
         assert "q" in HELP_TEXT
 
+    def test_help_text_has_new_bindings(self):
+        assert "Step" in HELP_TEXT
+        assert "loop" in HELP_TEXT.lower()
+        assert "g" in HELP_TEXT
+        assert "m" in HELP_TEXT
+        assert "b" in HELP_TEXT
+        assert "{ / }" in HELP_TEXT
+        assert "c" in HELP_TEXT
+
 
 class TestSearchOverlay:
     def test_has_update_match_count(self):

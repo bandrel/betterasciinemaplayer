@@ -10,8 +10,15 @@ HELP_TEXT = """\
 │ Shift+←/→  Seek ±30s            │
 │ [ / ]      Speed -/+ 0.5x       │
 │ Home/End   Start/End             │
+│ . / ,      Step forward/back     │
+│ l          Toggle loop mode      │
+│ g          Go to timestamp       │
 │ /          Search                │
-│ n / N      Next/Prev match      │
+│ n / N      Next/Prev match       │
+│ m          Add bookmark          │
+│ b          Bookmark list         │
+│ { / }      Prev/Next bookmark    │
+│ c          Copy screen text      │
 │ ?          Toggle help           │
 │ q          Quit                  │
 └──────────────────────────────────┘"""
