@@ -28,20 +28,26 @@ def parse_timestamp(value: str) -> float | None:
 class TimestampOverlay(Horizontal):
     DEFAULT_CSS = """
     TimestampOverlay {
-        layer: overlay;
         dock: bottom;
         height: 1;
         display: none;
-        background: $surface;
+        background: #333333;
+        color: #ffffff;
     }
     TimestampOverlay Static {
         width: auto;
         padding: 0 1;
+        color: #aaaaaa;
     }
     TimestampOverlay Input {
         width: 1fr;
         border: none;
         padding: 0;
+        background: #333333;
+        color: #ffffff;
+    }
+    TimestampOverlay Input:focus {
+        border: none;
     }
     """
 

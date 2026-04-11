@@ -59,11 +59,11 @@ class BettercastApp(App):
 
     def compose(self) -> ComposeResult:
         yield TerminalDisplay(id="terminal")
-        yield SearchOverlay(id="search")
-        yield TimestampOverlay(id="timestamp")
         yield BookmarkOverlay(id="bookmarks")
         yield KeyHintBar(id="keyhints")
         yield PlaybackProgressBar(id="progress")
+        yield SearchOverlay(id="search")
+        yield TimestampOverlay(id="timestamp")
         yield HelpOverlay(id="help")
 
     def on_mount(self) -> None:
