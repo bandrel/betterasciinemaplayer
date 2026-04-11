@@ -21,16 +21,29 @@ _ALT_SCREEN_1049 = 1049 << 5  # xterm: switch + save cursor + clear
 
 
 class AltScreen(pyte.Screen):
-    """pyte.Screen with alternate screen buffer (modes 47/1047/1049)."""
+    """pyte.Screen with alternate screen buffer (modes 47/1047/1049).
 
-    def __init__(self, columns: int, lines: int) -> None:
-        super().__init__(columns, lines)
+    When `no_wrap` is True, auto-wrap mode (DECAWM) is forcibly disabled.
+    Characters written past the right margin are silently dropped instead
+    of wrapping to the next line.  This allows resizing the screen to a
+    narrower width than the recording and having long lines clipped
+    cleanly at the edge.
+    """
+
+    def __init__(self, columns: int, lines: int, no_wrap: bool = False) -> None:
+        self._no_wrap: bool = no_wrap
         self._alt_buffer: dict | None = None
         self._alt_cursor: pyte.screens.Cursor | None = None
         self._in_alt_screen: bool = False
+        super().__init__(columns, lines)
+        if no_wrap:
+            self.mode.discard(mo.DECAWM)
 
     def set_mode(self, *modes: int, **kwargs: Any) -> None:
         super().set_mode(*modes, **kwargs)
+        # Prevent the recording from re-enabling auto-wrap.
+        if self._no_wrap:
+            self.mode.discard(mo.DECAWM)
         if kwargs.get("private"):
             shifted = [mode << 5 for mode in modes]
             for code in shifted:
@@ -78,3 +91,5 @@ class AltScreen(pyte.Screen):
         self._alt_buffer = None
         self._alt_cursor = None
         self._in_alt_screen = False
+        if self._no_wrap:
+            self.mode.discard(mo.DECAWM)

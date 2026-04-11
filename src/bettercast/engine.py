@@ -26,14 +26,15 @@ class PlaybackEngine:
         return self.recording.header.duration
 
     def resize(self, width: int, height: int) -> None:
-        self.screen.resize(height, width)
-        self._stream = pyte.Stream(self.screen)
-        # Re-seek to rebuild screen state at new dimensions
+        """Resize the virtual terminal and re-seek to rebuild state.
+
+        Uses no_wrap mode so content wider than the new width is clipped
+        at the right edge instead of wrapping to the next line.
+        """
         pos = self.position
-        self._event_index = 0
-        self.screen.reset()
-        self.screen.resize(height, width)
+        self.screen = AltScreen(width, height, no_wrap=True)
         self._stream = pyte.Stream(self.screen)
+        self._event_index = 0
         for i, event in enumerate(self.recording.events):
             if event.time > pos:
                 self._event_index = i

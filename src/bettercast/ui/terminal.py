@@ -56,15 +56,11 @@ class TerminalDisplay(Static, can_focus=True):
 
     def render_engine_screen(self, engine: PlaybackEngine) -> Text:
         screen = engine.screen
-        visible_cols = min(screen.columns, self.size.width) if self.size.width > 0 else screen.columns
-        visible_rows = min(screen.lines, self.size.height) if self.size.height > 0 else screen.lines
-        # Show the bottom portion of the screen (most relevant for TUI apps)
-        start_row = max(0, screen.lines - visible_rows)
         output = Text()
-        for row in range(start_row, screen.lines):
-            if row > start_row:
+        for row in range(screen.lines):
+            if row > 0:
                 output.append("\n")
-            for col in range(visible_cols):
+            for col in range(screen.columns):
                 char = screen.buffer[row][col]
                 try:
                     style = char_to_style(char)

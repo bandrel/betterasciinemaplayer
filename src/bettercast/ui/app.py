@@ -92,6 +92,15 @@ class BettercastApp(App):
     def _refresh_display(self) -> None:
         self._terminal.update_from_engine(self.engine)
 
+    def on_resize(self, event) -> None:
+        if not hasattr(self, "_terminal"):
+            return
+        w = self._terminal.size.width
+        h = self._terminal.size.height
+        if w > 0 and h > 0:
+            self.engine.resize(w, h)
+            self._refresh_display()
+
     # --- Playback actions ---
 
     def action_toggle_play(self) -> None:
