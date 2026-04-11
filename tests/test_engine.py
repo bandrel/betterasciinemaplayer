@@ -259,6 +259,39 @@ class TestFrameStepping:
         assert "echo hello" in engine.screen.display[0]
 
 
+class TestLoopMode:
+    def test_looping_defaults_to_false(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        assert engine.looping is False
+
+    def test_advance_loops_when_enabled(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.looping = True
+        engine.playing = True
+        engine.seek(3.9)
+        engine.playing = True
+        engine.advance(1.0)
+        assert engine.playing is True
+        assert engine.position < 1.0
+
+    def test_advance_stops_at_end_when_not_looping(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.looping = False
+        engine.playing = True
+        engine.advance(10.0)
+        assert engine.playing is False
+        assert engine.position == 4.0
+
+    def test_loop_resets_position_to_zero(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.looping = True
+        engine.playing = True
+        engine.seek(3.99)
+        engine.playing = True
+        engine.advance(0.1)
+        assert engine.position < 1.0
+
+
 def _make_recording(events_data: list[tuple[float, str]], width=80, height=24):
     """Build a Recording from a list of (time, output_data) tuples."""
     header = CastHeader(

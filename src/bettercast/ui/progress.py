@@ -27,9 +27,12 @@ class PlaybackProgressBar(Static):
     duration = reactive(0.0)
     speed = reactive(1.0)
     playing = reactive(False)
+    looping = reactive(False)
 
     def render(self) -> Text:
-        icon = "\u25b6" if self.playing else "\u23f8"
+        play_icon = "\u25b6" if self.playing else "\u23f8"
+        loop_icon = " \u27f3" if self.looping else ""
+        icon = f"{play_icon}{loop_icon}"
         current = format_time(self.position)
         total = format_time(self.duration)
         speed_str = f"{self.speed:.1f}x"

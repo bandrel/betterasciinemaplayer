@@ -13,6 +13,7 @@ class PlaybackEngine:
         self.position: float = 0.0
         self.speed: float = 1.0
         self.playing: bool = False
+        self.looping: bool = False
         self._event_index: int = 0
         self._search_index: list[tuple[float, str, str]] = []
 
@@ -51,7 +52,11 @@ class PlaybackEngine:
             self._event_index += 1
         self.position = target
         if target >= self.duration:
-            self.playing = False
+            if self.looping:
+                self.seek(0.0)
+                self.playing = True
+            else:
+                self.playing = False
         return changed
 
     def play(self) -> None:

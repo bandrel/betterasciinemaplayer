@@ -33,6 +33,7 @@ class BettercastApp(App):
         Binding("N", "prev_match", "Prev match"),
         Binding("full_stop", "step_forward", "Step forward"),
         Binding("comma", "step_backward", "Step backward"),
+        Binding("l", "toggle_loop", "Loop"),
         Binding("question_mark", "toggle_help", "Help"),
         Binding("q", "quit", "Quit"),
     ]
@@ -64,6 +65,7 @@ class BettercastApp(App):
         self._progress_bar.position = self.engine.position
         self._progress_bar.playing = self.engine.playing
         self._progress_bar.speed = self.engine.speed
+        self._progress_bar.looping = self.engine.looping
 
     def _refresh_display(self) -> None:
         self._terminal.update_from_engine(self.engine)
@@ -154,6 +156,9 @@ class BettercastApp(App):
         if search.display:
             count = self.engine.count_matches(event.value)
             search.update_match_count(count)
+
+    def action_toggle_loop(self) -> None:
+        self.engine.looping = not self.engine.looping
 
     # --- Help ---
 
