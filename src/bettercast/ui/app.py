@@ -83,11 +83,19 @@ class BettercastApp(App):
             self._refresh_display()
         if not self._search_ready:
             self._progress_bar.flash_message = "Indexing..."
-        self._progress_bar.position = self.engine.position
-        self._progress_bar.playing = self.engine.playing
-        self._progress_bar.speed = self.engine.speed
-        self._progress_bar.looping = self.engine.looping
-        self._progress_bar.bookmark_times = [t for t, _ in self.engine.bookmarks]
+        pb = self._progress_bar
+        pos = self.engine.position
+        if pb.position != pos:
+            pb.position = pos
+        playing = self.engine.playing
+        if pb.playing != playing:
+            pb.playing = playing
+        speed = self.engine.speed
+        if pb.speed != speed:
+            pb.speed = speed
+        looping = self.engine.looping
+        if pb.looping != looping:
+            pb.looping = looping
 
     def _refresh_display(self) -> None:
         self._terminal.update_from_engine(self.engine)
@@ -221,8 +229,12 @@ class BettercastApp(App):
 
     # --- Bookmarks ---
 
+    def _sync_bookmark_times(self) -> None:
+        self._progress_bar.bookmark_times = [t for t, _ in self.engine.bookmarks]
+
     def action_add_bookmark(self) -> None:
         self.engine.add_bookmark(self.engine.position)
+        self._sync_bookmark_times()
 
     def action_open_bookmarks(self) -> None:
         bm = self.query_one("#bookmarks", BookmarkOverlay)
