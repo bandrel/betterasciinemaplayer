@@ -3,12 +3,13 @@ from __future__ import annotations
 import pyte
 
 from .formats.base import Recording
+from .terminal import AltScreen
 
 
 class PlaybackEngine:
     def __init__(self, recording: Recording) -> None:
         self.recording = recording
-        self.screen = pyte.Screen(recording.header.width, recording.header.height)
+        self.screen = AltScreen(recording.header.width, recording.header.height)
         self._stream = pyte.Stream(self.screen)
         self.position: float = 0.0
         self.speed: float = 1.0
@@ -99,7 +100,7 @@ class PlaybackEngine:
                 return
 
     def build_search_index(self) -> None:
-        screen = pyte.Screen(self.recording.header.width, self.recording.header.height)
+        screen = AltScreen(self.recording.header.width, self.recording.header.height)
         stream = pyte.Stream(screen)
         index: list[tuple[float, str, str]] = []
         prev_text = ""
