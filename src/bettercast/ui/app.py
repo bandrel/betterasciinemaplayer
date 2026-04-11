@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import platform
+import subprocess
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Input
@@ -41,6 +44,7 @@ class BettercastApp(App):
         Binding("b", "open_bookmarks", "Bookmarks list"),
         Binding("left_curly_bracket", "prev_bookmark", "Prev bookmark"),
         Binding("right_curly_bracket", "next_bookmark_jump", "Next bookmark"),
+        Binding("c", "copy_text", "Copy"),
         Binding("question_mark", "toggle_help", "Help"),
         Binding("q", "quit", "Quit"),
     ]
@@ -224,3 +228,31 @@ class BettercastApp(App):
     def action_toggle_help(self) -> None:
         help_overlay = self.query_one("#help", HelpOverlay)
         help_overlay.display = not help_overlay.display
+
+    # --- Copy ---
+
+    def action_copy_text(self) -> None:
+        screen = self.engine.screen
+        lines = []
+        for row in range(screen.lines):
+            line_chars = []
+            for col in range(screen.columns):
+                char = screen.buffer[row][col]
+                line_chars.append(char.data if char.data else " ")
+            lines.append("".join(line_chars).rstrip())
+        text = "\n".join(lines).rstrip() + "\n"
+
+        system = platform.system()
+        try:
+            if system == "Darwin":
+                subprocess.run(["pbcopy"], input=text, text=True, check=True)
+            else:
+                subprocess.run(["xclip", "-selection", "clipboard"], input=text, text=True, check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            return
+
+        self._progress_bar.flash_message = "Copied!"
+        self.set_timer(1.0, self._clear_flash)
+
+    def _clear_flash(self) -> None:
+        self._progress_bar.flash_message = ""
