@@ -460,3 +460,32 @@ class TestIdleCompressionE2E:
             engine.playing = True
             await pilot.pause(delay=0.3)
             assert engine.position > 5.0
+
+
+# ── Auto-restart at end ─────────────────────────────────────────────
+
+class TestAutoRestartE2E:
+    @pytest.mark.asyncio
+    async def test_space_restarts_from_end(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("end")
+            assert engine.position == 4.0
+            assert engine.playing is False
+            await pilot.press("space")
+            # Position resets near 0 (timer tick may advance slightly)
+            assert engine.position < 0.5
+            assert engine.playing is True
+
+    @pytest.mark.asyncio
+    async def test_space_at_middle_just_toggles(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("right")
+            await pilot.press("left")
+            await pilot.press("space")
+            assert engine.playing is True
+            # Position near 0 (timer tick may advance slightly)
+            assert engine.position < 0.5

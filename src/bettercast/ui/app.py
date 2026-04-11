@@ -75,6 +75,9 @@ class BettercastApp(App):
     def action_toggle_play(self) -> None:
         if self.query_one("#search", SearchOverlay).display:
             return
+        if not self.engine.playing and self.engine.position >= self.engine.duration:
+            self.engine.seek(0.0)
+            self._refresh_display()
         self.engine.toggle()
 
     def action_seek_back(self) -> None:
