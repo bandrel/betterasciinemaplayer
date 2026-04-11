@@ -27,6 +27,7 @@ class PlaybackProgressBar(Static):
     duration = reactive(0.0)
     speed = reactive(1.0)
     playing = reactive(False)
+    flash_message: reactive[str] = reactive("")
 
     def render(self) -> Text:
         icon = "\u25b6" if self.playing else "\u23f8"
@@ -46,4 +47,6 @@ class PlaybackProgressBar(Static):
         else:
             bar = ""
 
+        if self.flash_message:
+            return Text(f"{prefix}{bar} {self.flash_message} ")
         return Text(f"{prefix}{bar}{suffix}")

@@ -6,6 +6,7 @@ search, seek, and playback all work together correctly.
 """
 
 import asyncio
+from unittest.mock import patch
 
 import pytest
 
@@ -374,3 +375,48 @@ class TestHelpOverlay:
             assert "Play/Pause" in text
             assert "Search" in text
             assert "Quit" in text
+
+
+# ── Copy text ───────────────────────────────────────────────────────
+
+
+class TestCopyTextE2E:
+    @pytest.mark.asyncio
+    async def test_c_copies_screen_text(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("right")  # seek to 4.0
+            with patch("bettercast.ui.app.subprocess.run") as mock_run:
+                await pilot.press("c")
+                mock_run.assert_called_once()
+                call_args = mock_run.call_args
+                assert call_args[0][0][0] in ("pbcopy", "xclip", "xsel")
+
+    @pytest.mark.asyncio
+    async def test_c_sends_screen_content_to_clipboard(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("right")  # seek to 4.0 — has "Python 3.12.0"
+            captured_input = []
+
+            def fake_run(cmd, input=None, **kwargs):
+                captured_input.append(input)
+
+            with patch("subprocess.run", side_effect=fake_run):
+                await pilot.press("c")
+
+            assert len(captured_input) == 1
+            assert "Python 3.12.0" in captured_input[0]
+
+    @pytest.mark.asyncio
+    async def test_c_shows_flash_message(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            with patch("bettercast.ui.app.subprocess.run"):
+                await pilot.press("c")
+                await pilot.pause()
+                progress = app.query_one("#progress", PlaybackProgressBar)
+                assert progress.flash_message == "Copied!"
