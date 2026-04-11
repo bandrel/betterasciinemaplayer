@@ -199,6 +199,66 @@ class TestEngineSearch:
         assert engine.count_matches("") == 0
 
 
+class TestFrameStepping:
+    def test_step_forward_moves_to_next_output_event(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(0.0)
+        engine.step_forward()
+        # First output event is at t=0.5
+        assert engine.position == 0.5
+
+    def test_step_forward_skips_to_second_event(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(0.5)
+        engine.step_forward()
+        # Next output event after 0.5 is at t=1.0
+        assert engine.position == 1.0
+
+    def test_step_forward_pauses_playback(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.playing = True
+        engine.step_forward()
+        assert engine.playing is False
+
+    def test_step_forward_at_end_is_noop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(4.0)
+        engine.step_forward()
+        assert engine.position == 4.0
+
+    def test_step_forward_feeds_event_data(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.step_forward()  # t=0.5: "$ "
+        assert "$ " in engine.screen.display[0]
+
+    def test_step_backward_moves_to_previous_output_event(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(1.5)
+        engine.step_backward()
+        # Previous output event before 1.5 is at t=1.0
+        assert engine.position == 1.0
+
+    def test_step_backward_pauses_playback(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(2.0)
+        engine.playing = True
+        engine.step_backward()
+        assert engine.playing is False
+
+    def test_step_backward_at_start_is_noop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(0.0)
+        engine.step_backward()
+        assert engine.position == 0.0
+
+    def test_step_backward_renders_correct_screen(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(2.0)
+        engine.step_backward()
+        # At t=1.0: "echo hello\r\n" was just output
+        assert "echo hello" in engine.screen.display[0]
+
+
 def _make_recording(events_data: list[tuple[float, str]], width=80, height=24):
     """Build a Recording from a list of (time, output_data) tuples."""
     header = CastHeader(

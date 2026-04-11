@@ -349,6 +349,47 @@ class TestSearchEdgeCases:
             assert engine.position == 0.0
 
 
+# ── Frame stepping ───────────────────────────────────────────────────
+
+class TestFrameSteppingE2E:
+    @pytest.mark.asyncio
+    async def test_dot_steps_forward(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.position == 0.0
+            await pilot.press("full_stop")
+            assert engine.position == 0.5
+
+    @pytest.mark.asyncio
+    async def test_comma_steps_backward(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("right")  # seek to 4.0
+            await pilot.press("comma")
+            assert engine.position == 3.5
+
+    @pytest.mark.asyncio
+    async def test_step_forward_pauses_playback(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("space")
+            assert engine.playing is True
+            await pilot.press("full_stop")
+            assert engine.playing is False
+
+    @pytest.mark.asyncio
+    async def test_step_forward_updates_display(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("full_stop")  # t=0.5: "$ "
+            terminal = app.query_one("#terminal", TerminalDisplay)
+            assert engine.position == 0.5
+
+
 # ── Help overlay ─────────────────────────────────────────────────────
 
 class TestHelpOverlay:

@@ -66,6 +66,24 @@ class PlaybackEngine:
     def set_speed(self, speed: float) -> None:
         self.speed = max(0.5, min(speed, 8.0))
 
+    def step_forward(self) -> None:
+        self.playing = False
+        for i in range(self._event_index, len(self.recording.events)):
+            event = self.recording.events[i]
+            if event.type == "o":
+                self._stream.feed(event.data)
+                self._event_index = i + 1
+                self.position = event.time
+                return
+
+    def step_backward(self) -> None:
+        self.playing = False
+        for i in range(len(self.recording.events) - 1, -1, -1):
+            event = self.recording.events[i]
+            if event.type == "o" and event.time < self.position:
+                self.seek(event.time)
+                return
+
     def build_search_index(self) -> None:
         screen = pyte.Screen(self.recording.header.width, self.recording.header.height)
         stream = pyte.Stream(screen)
