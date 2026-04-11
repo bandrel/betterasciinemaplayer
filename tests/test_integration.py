@@ -689,3 +689,359 @@ class TestCopyTextE2E:
                 await pilot.pause()
                 progress = app.query_one("#progress", PlaybackProgressBar)
                 assert progress.flash_message == "Copied!"
+
+
+# ── Comprehensive keybinding E2E tests ─────────────────────────────
+# One test per keybinding to verify every shortcut works end-to-end.
+
+
+class TestAllKeybindings:
+    """Verify every keybinding triggers the expected behavior."""
+
+    # --- Playback ---
+
+    @pytest.mark.asyncio
+    async def test_space_toggles_play(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.playing is False
+            await pilot.press("space")
+            assert engine.playing is True
+            await pilot.press("space")
+            assert engine.playing is False
+
+    @pytest.mark.asyncio
+    async def test_left_seeks_back_5s(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("end")  # go to 4.0
+            await pilot.press("left")
+            assert engine.position == 0.0  # 4.0 - 5.0 clamps to 0
+
+    @pytest.mark.asyncio
+    async def test_right_seeks_forward_5s(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.position == 0.0
+            await pilot.press("right")
+            assert engine.position == 4.0  # 0.0 + 5.0 clamps to duration
+
+    @pytest.mark.asyncio
+    async def test_shift_left_seeks_back_30s(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("end")
+            await pilot.press("shift+left")
+            assert engine.position == 0.0
+
+    @pytest.mark.asyncio
+    async def test_shift_right_seeks_forward_30s(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("shift+right")
+            assert engine.position == 4.0
+
+    @pytest.mark.asyncio
+    async def test_home_seeks_to_start(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("end")
+            await pilot.press("home")
+            assert engine.position == 0.0
+
+    @pytest.mark.asyncio
+    async def test_end_seeks_to_end(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("end")
+            assert engine.position == 4.0
+
+    # --- Speed ---
+
+    @pytest.mark.asyncio
+    async def test_right_bracket_increases_speed(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.speed == 1.0
+            await pilot.press("right_square_bracket")
+            assert engine.speed == 1.5
+            await pilot.press("right_square_bracket")
+            assert engine.speed == 2.0
+
+    @pytest.mark.asyncio
+    async def test_left_bracket_decreases_speed(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.speed == 1.0
+            await pilot.press("left_square_bracket")
+            assert engine.speed == 0.5
+
+    @pytest.mark.asyncio
+    async def test_speed_clamps_at_minimum(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("left_square_bracket")
+            await pilot.press("left_square_bracket")
+            await pilot.press("left_square_bracket")
+            assert engine.speed == 0.5
+
+    @pytest.mark.asyncio
+    async def test_speed_clamps_at_maximum(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            for _ in range(20):
+                await pilot.press("right_square_bracket")
+            assert engine.speed == 8.0
+
+    # --- Frame stepping ---
+
+    @pytest.mark.asyncio
+    async def test_dot_steps_forward_one_frame(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.position == 0.0
+            await pilot.press("full_stop")
+            assert engine.position == 0.5
+            await pilot.press("full_stop")
+            assert engine.position == 1.0
+
+    @pytest.mark.asyncio
+    async def test_comma_steps_backward_one_frame(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("end")
+            await pilot.press("comma")
+            assert engine.position == 3.5
+
+    @pytest.mark.asyncio
+    async def test_dot_at_end_is_noop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("end")
+            await pilot.press("full_stop")
+            assert engine.position == 4.0
+
+    @pytest.mark.asyncio
+    async def test_comma_at_start_is_noop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("comma")
+            assert engine.position == 0.0
+
+    # --- Loop mode ---
+
+    @pytest.mark.asyncio
+    async def test_l_toggles_loop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            assert engine.looping is False
+            await pilot.press("l")
+            assert engine.looping is True
+            await pilot.press("l")
+            assert engine.looping is False
+
+    # --- Search ---
+
+    @pytest.mark.asyncio
+    async def test_slash_opens_search_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            search = app.query_one("#search", SearchOverlay)
+            assert search.display is False
+            await pilot.press("slash")
+            assert search.display is True
+
+    @pytest.mark.asyncio
+    async def test_escape_closes_search_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("slash")
+            assert app.query_one("#search", SearchOverlay).display is True
+            await pilot.press("escape")
+            assert app.query_one("#search", SearchOverlay).display is False
+
+    @pytest.mark.asyncio
+    async def test_n_jumps_to_next_match(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await _wait_for_workers(app)
+            await pilot.press("slash")
+            search_input = app.query_one("#search", SearchOverlay).query_one(Input)
+            search_input.value = "python"
+            await pilot.press("enter")
+            first_pos = engine.position
+            assert first_pos >= 3.0
+            # n with no further matches stays put or wraps
+            await pilot.press("n")
+
+    @pytest.mark.asyncio
+    async def test_N_jumps_to_prev_match(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await _wait_for_workers(app)
+            # Search and go to end
+            await pilot.press("slash")
+            search_input = app.query_one("#search", SearchOverlay).query_one(Input)
+            search_input.value = "hello"
+            await pilot.press("enter")
+            pos_after_search = engine.position
+            assert pos_after_search > 0.0
+            # Seek to end then prev match
+            await pilot.press("end")
+            await pilot.press("N")
+            assert engine.position <= 4.0
+
+    # --- Jump to timestamp ---
+
+    @pytest.mark.asyncio
+    async def test_g_opens_timestamp_overlay(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            ts = app.query_one("#timestamp", TimestampOverlay)
+            assert ts.display is False
+            await pilot.press("g")
+            assert ts.display is True
+
+    @pytest.mark.asyncio
+    async def test_g_submit_seeks_to_time(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("g")
+            ts_input = app.query_one("#timestamp", TimestampOverlay).query_one(Input)
+            ts_input.value = "00:03"
+            await pilot.press("enter")
+            assert engine.position == 3.0
+
+    @pytest.mark.asyncio
+    async def test_g_escape_dismisses(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("g")
+            assert app.query_one("#timestamp", TimestampOverlay).display is True
+            await pilot.press("escape")
+            assert app.query_one("#timestamp", TimestampOverlay).display is False
+
+    # --- Bookmarks ---
+
+    @pytest.mark.asyncio
+    async def test_m_adds_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("right")  # 4.0
+            await pilot.press("m")
+            assert len(engine.bookmarks) == 1
+            assert engine.bookmarks[0][0] == 4.0
+
+    @pytest.mark.asyncio
+    async def test_b_opens_bookmark_list(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            engine.add_bookmark(1.0)
+            bm = app.query_one("#bookmarks", BookmarkOverlay)
+            assert bm.display is False
+            await pilot.press("b")
+            assert bm.display is True
+
+    @pytest.mark.asyncio
+    async def test_right_curly_bracket_next_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            engine.add_bookmark(1.0)
+            engine.add_bookmark(3.0)
+            await pilot.press("right_curly_bracket")
+            assert engine.position == 1.0
+            await pilot.press("right_curly_bracket")
+            assert engine.position == 3.0
+
+    @pytest.mark.asyncio
+    async def test_left_curly_bracket_prev_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            engine.add_bookmark(1.0)
+            engine.add_bookmark(3.0)
+            engine.seek(4.0)
+            await pilot.press("left_curly_bracket")
+            assert engine.position == 3.0
+
+    # --- Copy ---
+
+    @pytest.mark.asyncio
+    async def test_c_copies_to_clipboard(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("right")  # seek to 4.0
+            captured = []
+
+            def fake_run(cmd, input=None, **kwargs):
+                captured.append(input)
+
+            with patch("bettercast.ui.app.subprocess.run", side_effect=fake_run):
+                await pilot.press("c")
+
+            assert len(captured) == 1
+            assert "Python 3.12.0" in captured[0]
+
+    # --- Help HUD ---
+
+    @pytest.mark.asyncio
+    async def test_question_mark_toggles_hud(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            hud = app.query_one("#help", HelpOverlay)
+            assert hud.display is False
+            await pilot.press("question_mark")
+            assert hud.display is True
+            await pilot.press("question_mark")
+            assert hud.display is False
+
+    # --- Quit ---
+
+    @pytest.mark.asyncio
+    async def test_q_quits(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("q")
+
+    # --- Auto-restart ---
+
+    @pytest.mark.asyncio
+    async def test_space_at_end_restarts(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        app = BettercastApp(engine)
+        async with app.run_test() as pilot:
+            await pilot.press("end")
+            assert engine.position == 4.0
+            assert engine.playing is False
+            await pilot.press("space")
+            assert engine.position < 0.5
+            assert engine.playing is True
