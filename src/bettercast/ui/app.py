@@ -242,6 +242,12 @@ class BettercastApp(App):
             self._search_ready = True
             if self._progress_bar.flash_message == "Indexing...":
                 self._progress_bar.flash_message = ""
+            # Update match count if search overlay is open
+            search = self.query_one("#search", SearchOverlay)
+            if search.display:
+                search_input = search.query_one(Input)
+                count = self.engine.count_matches(search_input.value)
+                search.update_match_count(count)
 
     # --- Help ---
 
