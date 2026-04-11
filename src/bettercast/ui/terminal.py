@@ -62,7 +62,10 @@ class TerminalDisplay(Static, can_focus=True):
                 output.append("\n")
             for col in range(screen.columns):
                 char = screen.buffer[row][col]
-                style = char_to_style(char)
+                try:
+                    style = char_to_style(char)
+                except Exception:
+                    style = Style()
                 if char.data:
                     output.append(char.data, style=style)
         return output

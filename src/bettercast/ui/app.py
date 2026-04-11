@@ -10,6 +10,7 @@ from textual.widgets import Input
 from bettercast.engine import PlaybackEngine
 from bettercast.ui.bookmarks import BookmarkOverlay
 from bettercast.ui.help import HelpOverlay
+from bettercast.ui.keyhints import KeyHintBar
 from bettercast.ui.progress import PlaybackProgressBar
 from bettercast.ui.search import SearchOverlay
 from bettercast.ui.terminal import TerminalDisplay
@@ -59,6 +60,7 @@ class BettercastApp(App):
         yield SearchOverlay(id="search")
         yield TimestampOverlay(id="timestamp")
         yield BookmarkOverlay(id="bookmarks")
+        yield KeyHintBar(id="keyhints")
         yield PlaybackProgressBar(id="progress")
         yield HelpOverlay(id="help")
 
