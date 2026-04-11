@@ -11,7 +11,7 @@ Eight quality-of-life features for the Bettercast asciinema player, organized in
 Add `step_forward()` and `step_backward()` methods to `PlaybackEngine`.
 
 - `step_forward()`: advances to the next output event (type `"o"`), sets `position` to that event's timestamp, auto-pauses playback.
-- `step_backward()`: seeks to the previous output event's timestamp, auto-pauses playback.
+- `step_backward()`: seeks to the last output event whose timestamp is strictly before the current position, auto-pauses playback. At position 0.0, this is a no-op.
 - Skips non-`"o"` events when stepping.
 - Keybindings: `.` (forward), `,` (backward).
 
@@ -21,6 +21,7 @@ When playback reaches the end and pauses, pressing Space should restart from the
 
 - Implementation lives in `action_toggle_play` in `app.py`: if `position >= duration` when the user presses space, seek to `0.0` before toggling play.
 - No engine state changes needed — this is a UI-level convenience.
+- Note: despite being a UI change, this is grouped with Layer 1 because it depends on engine state (position/duration) and is conceptually a playback behavior.
 
 ### 1c. Loop Mode
 
@@ -120,4 +121,23 @@ Features are grouped by layer to minimize merge conflicts when executed by paral
 
 ## Testing Strategy
 
-Each feature gets unit tests for its engine methods (if any) and integration tests for UI behavior. Tests are written alongside implementation using TDD — tests first, then implementation.
+Each feature gets three levels of testing:
+
+1. **Unit tests** — for engine methods (step_forward, step_backward, loop mode, idle compression, bookmark CRUD, etc.). Located in `test_engine.py`.
+2. **Widget/integration tests** — for UI behavior (overlay show/hide, keybinding responses, progress bar rendering). Located in feature-specific or existing test files.
+3. **End-to-end CLI tests** — for each feature, a test in `test_cli.py` that launches the full `BettercastApp` with a sample `.cast` file and simulates the complete user workflow via Textual's pilot API. E2E tests verify the feature works through the full stack (CLI args -> engine -> UI -> visible output).
+
+Tests are written alongside implementation using TDD — tests first, then implementation.
+
+### E2E Test Coverage Per Feature
+
+| Feature | E2E Test |
+|---------|----------|
+| Frame stepping | Launch app, pause, press `.`/`,`, verify position advances/retreats by one event |
+| Auto-restart | Play to end, verify paused, press Space, verify position resets to 0 and playing |
+| Loop mode | Press `l`, play to end, verify playback continues from 0 instead of pausing |
+| Idle compression | Load a recording with a >2s gap, play through, verify the gap is compressed |
+| Escape dismiss search | Open search with `/`, press Escape, verify overlay hidden and previous query intact |
+| Jump to timestamp | Press `g`, type "00:05", submit, verify position is 5.0s |
+| Bookmarks | Press `m` to add, `b` to open list, select to jump, `d` to delete, verify all |
+| Copy text | Press `c`, verify clipboard contains current screen text |
