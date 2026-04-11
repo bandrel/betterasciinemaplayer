@@ -5,7 +5,7 @@ import subprocess
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.widgets import Input
+from textual.widgets import Input, Static
 
 from bettercast.engine import PlaybackEngine
 from bettercast.ui.bookmarks import BookmarkOverlay
@@ -68,7 +68,8 @@ class BettercastApp(App):
 
     def on_mount(self) -> None:
         self._terminal = self.query_one("#terminal", TerminalDisplay)
-        self.run_worker(self.engine.build_search_index, thread=True)
+        self._search_worker = self.run_worker(self.engine.build_search_index, thread=True)
+        self._search_ready = False
         self._refresh_display()
         self._progress_bar = self.query_one("#progress", PlaybackProgressBar)
         self._progress_bar.duration = self.engine.duration
@@ -79,6 +80,13 @@ class BettercastApp(App):
         changed = self.engine.advance(1 / 30)
         if changed:
             self._refresh_display()
+        if not self._search_ready:
+            if self._search_worker.is_finished:
+                self._search_ready = True
+                if self._progress_bar.flash_message == "Indexing...":
+                    self._progress_bar.flash_message = ""
+            else:
+                self._progress_bar.flash_message = "Indexing..."
         self._progress_bar.position = self.engine.position
         self._progress_bar.playing = self.engine.playing
         self._progress_bar.speed = self.engine.speed
@@ -196,8 +204,12 @@ class BettercastApp(App):
     def on_input_changed(self, event: Input.Changed) -> None:
         search = self.query_one("#search", SearchOverlay)
         if search.display:
-            count = self.engine.count_matches(event.value)
-            search.update_match_count(count)
+            if not self._search_ready:
+                label = search.query_one("#match-count", Static)
+                label.update("[indexing...]")
+            else:
+                count = self.engine.count_matches(event.value)
+                search.update_match_count(count)
 
     def action_toggle_loop(self) -> None:
         self.engine.looping = not self.engine.looping

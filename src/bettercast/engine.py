@@ -104,26 +104,41 @@ class PlaybackEngine:
         stream = pyte.Stream(screen)
         index: list[tuple[float, str, str]] = []
         prev_text = ""
-        for event in self.recording.events:
-            if event.type == "o":
-                stream.feed(event.data)
-                try:
-                    text = "\n".join(screen.display)
-                except IndexError:
-                    # pyte's display property crashes on Char entries with
-                    # empty data (from certain escape sequences). Extract
-                    # text directly from the buffer instead.
-                    lines = []
-                    for row in range(screen.lines):
-                        line_chars = []
-                        for col in range(screen.columns):
-                            data = screen.buffer[row][col].data
-                            line_chars.append(data if data else " ")
-                        lines.append("".join(line_chars))
-                    text = "\n".join(lines)
-                if text != prev_text:
-                    index.append((event.time, text, text.lower()))
-                    prev_text = text
+        last_snapshot_time = -1.0
+        min_interval = 0.3  # snapshot at most every 300ms
+        cols = screen.columns
+        rows = screen.lines
+
+        events = self.recording.events
+        for i, event in enumerate(events):
+            if event.type != "o":
+                continue
+            stream.feed(event.data)
+
+            is_last = i + 1 >= len(events)
+            next_far = not is_last and events[i + 1].time - event.time > min_interval
+            enough_time = event.time - last_snapshot_time >= min_interval
+
+            if not (enough_time or next_far or is_last):
+                continue
+
+            # Fast buffer read — bypass screen.display property
+            lines = []
+            buf = screen.buffer
+            for row in range(rows):
+                row_buf = buf[row]
+                line_chars = []
+                for col in range(cols):
+                    data = row_buf[col].data
+                    line_chars.append(data if data else " ")
+                lines.append("".join(line_chars))
+            text = "\n".join(lines)
+
+            if text != prev_text:
+                index.append((event.time, text, text.lower()))
+                prev_text = text
+            last_snapshot_time = event.time
+
         self._search_index = index
 
     def next_match(self, query: str) -> float | None:
