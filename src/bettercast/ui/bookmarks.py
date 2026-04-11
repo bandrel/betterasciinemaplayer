@@ -39,7 +39,10 @@ class BookmarkOverlay(Static, can_focus=True):
         if not self._bookmarks:
             self.update("No bookmarks yet.\n\nPress Escape to close.")
             return
-        lines = ["\u250c\u2500\u2500\u2500 Bookmarks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510"]
+        # Fixed inner width for consistent borders
+        w = 36
+        header = f"\u250c\u2500\u2500\u2500 Bookmarks " + "\u2500" * (w - 14) + "\u2510"
+        lines = [header]
         for i, (time, label) in enumerate(self._bookmarks):
             m, s = divmod(int(time), 60)
             h, m = divmod(m, 60)
@@ -48,10 +51,12 @@ class BookmarkOverlay(Static, can_focus=True):
             else:
                 ts = f"{m:02d}:{s:02d}"
             marker = "\u25b6" if i == self._selected else " "
-            lines.append(f"\u2502 {marker} {ts}  {label:<20s} \u2502")
-        lines.append("\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524")
-        lines.append("\u2502 Enter: jump  d: delete  Esc: close\u2502")
-        lines.append("\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518")
+            content = f" {marker} {ts}  {label}"
+            lines.append(f"\u2502{content:<{w}}\u2502")
+        lines.append(f"\u251c{'\u2500' * w}\u2524")
+        footer = " Enter: jump  d: delete  Esc: close"
+        lines.append(f"\u2502{footer:<{w}}\u2502")
+        lines.append(f"\u2514{'\u2500' * w}\u2518")
         self.update("\n".join(lines))
 
     def action_dismiss(self) -> None:
