@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from functools import lru_cache
+
 from textual.widgets import Static
 from rich.style import Style
 from rich.text import Text
@@ -23,27 +25,38 @@ def pyte_color_to_rich(color: str) -> str | None:
     return color
 
 
-_style_cache: dict[tuple, Style] = {}
+@lru_cache(maxsize=2048)
+def _cached_style(key: tuple) -> Style:
+    fg = pyte_color_to_rich(key[0])
+    bg = pyte_color_to_rich(key[1])
+    return Style(
+        color=fg,
+        bgcolor=bg,
+        bold=key[2] if key[2] else None,
+        italic=key[3] if key[3] else None,
+        underline=key[4] if key[4] else None,
+        strike=key[5] if key[5] else None,
+        reverse=key[6] if key[6] else None,
+    )
 
 
 def char_to_style(char) -> Style:
     key = (char.fg, char.bg, char.bold, char.italics, char.underscore, char.strikethrough, char.reverse)
-    style = _style_cache.get(key)
-    if style is not None:
-        return style
-    fg = pyte_color_to_rich(char.fg)
-    bg = pyte_color_to_rich(char.bg)
-    style = Style(
-        color=fg,
-        bgcolor=bg,
-        bold=char.bold if char.bold else None,
-        italic=char.italics if char.italics else None,
-        underline=char.underscore if char.underscore else None,
-        strike=char.strikethrough if char.strikethrough else None,
-        reverse=char.reverse if char.reverse else None,
-    )
-    _style_cache[key] = style
-    return style
+    return _cached_style(key)
+
+
+def _render_row(screen, row: int) -> Text:
+    """Render a single row from the pyte screen buffer to a Rich Text."""
+    row_text = Text()
+    for col in range(screen.columns):
+        char = screen.buffer[row][col]
+        try:
+            style = char_to_style(char)
+        except Exception:
+            style = Style()
+        if char.data:
+            row_text.append(char.data, style=style)
+    return row_text
 
 
 class TerminalDisplay(Static, can_focus=True):
@@ -54,17 +67,35 @@ class TerminalDisplay(Static, can_focus=True):
     }
     """
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._row_cache: dict[int, Text] = {}
+        self._last_screen_id: int | None = None
+
     def render_engine_screen(self, engine: PlaybackEngine) -> Text:
         screen = engine.screen
+        screen_id = id(screen)
+
+        # If the screen object changed (resize), invalidate entire cache
+        if screen_id != self._last_screen_id:
+            self._row_cache.clear()
+            self._last_screen_id = screen_id
+
+        # Only re-render dirty rows
+        dirty = screen.dirty
+        for row in dirty:
+            if 0 <= row < screen.lines:
+                self._row_cache[row] = _render_row(screen, row)
+        dirty.clear()
+
+        # Assemble full output from cached rows
         output = Text()
         for row in range(screen.lines):
             if row > 0:
                 output.append("\n")
-            for col in range(screen.columns):
-                char = screen.buffer[row][col]
-                style = char_to_style(char)
-                if char.data:
-                    output.append(char.data, style=style)
+            cached = self._row_cache.get(row)
+            if cached is not None:
+                output.append_text(cached)
         return output
 
     def update_from_engine(self, engine: PlaybackEngine) -> None:

@@ -106,3 +106,88 @@ class TestCliErrorPaths:
         runner = CliRunner()
         result = runner.invoke(main, [str(bad_event)])
         assert result.exit_code != 0
+
+
+class TestIdleCompressionFlags:
+    def test_idle_threshold_flag(self):
+        runner = CliRunner()
+        with patch("bettercast.cli.BettercastApp.run"):
+            result = runner.invoke(main, [str(FIXTURES_DIR / "sample.cast"), "--idle-threshold", "3.0"])
+        assert result.exit_code == 0
+
+    def test_no_idle_compress_flag(self):
+        runner = CliRunner()
+        with patch("bettercast.cli.BettercastApp.run"):
+            result = runner.invoke(main, [str(FIXTURES_DIR / "sample.cast"), "--no-idle-compress"])
+        assert result.exit_code == 0
+
+    def test_idle_threshold_sets_engine_value(self):
+        runner = CliRunner()
+        constructed_apps = []
+        original_init = None
+
+        def capture_init(self, engine):
+            constructed_apps.append(engine)
+            original_init(self, engine)
+
+        from bettercast.ui.app import BettercastApp
+        original_init = BettercastApp.__init__
+
+        with patch.object(BettercastApp, "__init__", capture_init), \
+             patch.object(BettercastApp, "run"):
+            result = runner.invoke(main, [str(FIXTURES_DIR / "sample.cast"), "--idle-threshold", "3.0"])
+
+        assert result.exit_code == 0
+        engine = constructed_apps[0]
+        assert engine.idle_threshold == 3.0
+
+    def test_no_idle_compress_sets_infinity(self):
+        runner = CliRunner()
+        constructed_apps = []
+        original_init = None
+
+        def capture_init(self, engine):
+            constructed_apps.append(engine)
+            original_init(self, engine)
+
+        from bettercast.ui.app import BettercastApp
+        original_init = BettercastApp.__init__
+
+        with patch.object(BettercastApp, "__init__", capture_init), \
+             patch.object(BettercastApp, "run"):
+            result = runner.invoke(main, [str(FIXTURES_DIR / "sample.cast"), "--no-idle-compress"])
+
+        assert result.exit_code == 0
+        engine = constructed_apps[0]
+        assert engine.idle_threshold == float("inf")
+
+
+class TestV3AutoDetection:
+    def test_v3_file_loads_successfully(self):
+        runner = CliRunner()
+        with patch("bettercast.cli.BettercastApp.run") as mock_run:
+            result = runner.invoke(main, [str(FIXTURES_DIR / "sample_v3.cast")])
+        assert result.exit_code == 0
+        mock_run.assert_called_once()
+
+    def test_v3_file_uses_correct_dimensions(self):
+        runner = CliRunner()
+        constructed_apps = []
+        original_init = None
+
+        def capture_init(self, engine):
+            constructed_apps.append(engine)
+            original_init(self, engine)
+
+        from bettercast.ui.app import BettercastApp
+        original_init = BettercastApp.__init__
+
+        with patch.object(BettercastApp, "__init__", capture_init), \
+             patch.object(BettercastApp, "run"):
+            result = runner.invoke(main, [str(FIXTURES_DIR / "sample_v3.cast")])
+
+        assert result.exit_code == 0
+        engine = constructed_apps[0]
+        assert engine.recording.header.width == 80
+        assert engine.recording.header.height == 24
+        assert engine.duration == 4.0

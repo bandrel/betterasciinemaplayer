@@ -1,0 +1,8 @@
+{"version": 3, "term": {"cols": 80, "rows": 24, "type": "xterm-256color"}, "timestamp": 1234567890, "env": {"SHELL": "/bin/zsh"}}
+[0.5, "o", "$ "]
+[0.5, "o", "echo hello\r\n"]
+[0.5, "o", "hello\r\n"]
+[0.5, "o", "$ "]
+[1.0, "o", "python --version\r\n"]
+[0.5, "o", "Python 3.12.0\r\n"]
+[0.5, "o", "$ "]

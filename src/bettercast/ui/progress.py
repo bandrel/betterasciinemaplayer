@@ -27,9 +27,14 @@ class PlaybackProgressBar(Static):
     duration = reactive(0.0)
     speed = reactive(1.0)
     playing = reactive(False)
+    looping = reactive(False)
+    bookmark_times: reactive[list[float]] = reactive(list, always_update=True)
+    flash_message: reactive[str] = reactive("")
 
     def render(self) -> Text:
-        icon = "\u25b6" if self.playing else "\u23f8"
+        play_icon = "\u25b6" if self.playing else "\u23f8"
+        loop_icon = " \u27f3" if self.looping else ""
+        icon = f"{play_icon}{loop_icon}"
         current = format_time(self.position)
         total = format_time(self.duration)
         speed_str = f"{self.speed:.1f}x"
@@ -42,8 +47,15 @@ class PlaybackProgressBar(Static):
             ratio = min(self.position / self.duration, 1.0)
             filled = int(bar_width * ratio)
             remaining = bar_width - filled
-            bar = "\u2501" * filled + "\u2500" * remaining
+            bar_chars = list("\u2501" * filled + "\u2500" * remaining)
+            for bm_time in self.bookmark_times:
+                bm_pos = int(bar_width * min(bm_time / self.duration, 1.0))
+                if 0 <= bm_pos < len(bar_chars):
+                    bar_chars[bm_pos] = "\u2502"
+            bar = "".join(bar_chars)
         else:
             bar = ""
 
+        if self.flash_message:
+            return Text(f"{prefix}{bar} {self.flash_message} ")
         return Text(f"{prefix}{bar}{suffix}")

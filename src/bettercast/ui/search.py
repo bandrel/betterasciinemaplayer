@@ -11,16 +11,23 @@ class SearchOverlay(Horizontal):
         dock: bottom;
         height: 1;
         display: none;
-        background: $surface;
+        background: #333333;
+        color: #ffffff;
     }
     SearchOverlay Input {
         width: 1fr;
         border: none;
         padding: 0;
+        background: #333333;
+        color: #ffffff;
+    }
+    SearchOverlay Input:focus {
+        border: none;
     }
     SearchOverlay #match-count {
         width: auto;
         padding: 0 1;
+        color: #aaaaaa;
     }
     """
 

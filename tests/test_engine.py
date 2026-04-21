@@ -199,6 +199,99 @@ class TestEngineSearch:
         assert engine.count_matches("") == 0
 
 
+class TestFrameStepping:
+    def test_step_forward_moves_to_next_output_event(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(0.0)
+        engine.step_forward()
+        # First output event is at t=0.5
+        assert engine.position == 0.5
+
+    def test_step_forward_skips_to_second_event(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(0.5)
+        engine.step_forward()
+        # Next output event after 0.5 is at t=1.0
+        assert engine.position == 1.0
+
+    def test_step_forward_pauses_playback(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.playing = True
+        engine.step_forward()
+        assert engine.playing is False
+
+    def test_step_forward_at_end_is_noop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(4.0)
+        engine.step_forward()
+        assert engine.position == 4.0
+
+    def test_step_forward_feeds_event_data(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.step_forward()  # t=0.5: "$ "
+        assert "$ " in engine.screen.display[0]
+
+    def test_step_backward_moves_to_previous_output_event(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(1.5)
+        engine.step_backward()
+        # Previous output event before 1.5 is at t=1.0
+        assert engine.position == 1.0
+
+    def test_step_backward_pauses_playback(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(2.0)
+        engine.playing = True
+        engine.step_backward()
+        assert engine.playing is False
+
+    def test_step_backward_at_start_is_noop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(0.0)
+        engine.step_backward()
+        assert engine.position == 0.0
+
+    def test_step_backward_renders_correct_screen(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.seek(2.0)
+        engine.step_backward()
+        # At t=1.0: "echo hello\r\n" was just output
+        assert "echo hello" in engine.screen.display[0]
+
+
+class TestLoopMode:
+    def test_looping_defaults_to_false(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        assert engine.looping is False
+
+    def test_advance_loops_when_enabled(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.looping = True
+        engine.playing = True
+        engine.seek(3.9)
+        engine.playing = True
+        engine.advance(1.0)
+        assert engine.playing is True
+        assert engine.position < 1.0
+
+    def test_advance_stops_at_end_when_not_looping(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.looping = False
+        engine.playing = True
+        engine.advance(10.0)
+        assert engine.playing is False
+        assert engine.position == 4.0
+
+    def test_loop_resets_position_to_zero(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.looping = True
+        engine.playing = True
+        engine.seek(3.99)
+        engine.playing = True
+        engine.advance(0.1)
+        assert engine.position < 1.0
+
+
 def _make_recording(events_data: list[tuple[float, str]], width=80, height=24):
     """Build a Recording from a list of (time, output_data) tuples."""
     header = CastHeader(
@@ -210,6 +303,65 @@ def _make_recording(events_data: list[tuple[float, str]], width=80, height=24):
     )
     events = [Event(time=t, type="o", data=d) for t, d in events_data]
     return Recording(header=header, events=events)
+
+
+class TestIdleCompression:
+    def _make_idle_recording(self):
+        """Recording with a 4.5s idle gap between t=1.5 and t=6.0."""
+        return _make_recording([
+            (0.5, "$ "),
+            (1.0, "echo start\r\n"),
+            (1.5, "start\r\n$ "),
+            (6.0, "echo after gap\r\n"),
+            (6.5, "after gap\r\n$ "),
+            (7.0, "echo end\r\n"),
+            (7.5, "end\r\n$ "),
+        ])
+
+    def test_idle_threshold_defaults_to_infinity(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        assert engine.idle_threshold == float("inf")
+
+    def test_advance_skips_idle_gap(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = 2.0
+        engine.playing = True
+        engine.seek(1.5)
+        engine.playing = True
+        changed = engine.advance(0.1)
+        assert engine.position >= 5.5
+
+    def test_advance_does_not_skip_small_gap(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = 2.0
+        engine.playing = True
+        engine.seek(0.5)
+        engine.playing = True
+        engine.advance(0.1)
+        assert engine.position == 0.6
+
+    def test_no_compression_when_threshold_is_infinity(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = float("inf")
+        engine.playing = True
+        engine.seek(1.5)
+        engine.playing = True
+        engine.advance(0.1)
+        assert engine.position == 1.6
+
+    def test_custom_threshold(self):
+        recording = self._make_idle_recording()
+        engine = PlaybackEngine(recording)
+        engine.idle_threshold = 5.0
+        engine.playing = True
+        engine.seek(1.5)
+        engine.playing = True
+        engine.advance(0.1)
+        assert engine.position == 1.6
 
 
 class TestSearchIndexEmptyCharFallback:
@@ -327,3 +479,91 @@ class TestSearchIndexEmptyCharFallback:
         assert len(engine._search_index) > 0
         texts = " ".join(text for _, text, _ in engine._search_index)
         assert "Step" in texts
+
+
+class TestBookmarks:
+    def test_bookmarks_initially_empty(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        assert engine.bookmarks == []
+
+    def test_add_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.5)
+        assert len(engine.bookmarks) == 1
+        assert engine.bookmarks[0] == (1.5, "Bookmark 1")
+
+    def test_add_bookmark_with_label(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.5, "interesting part")
+        assert engine.bookmarks[0] == (1.5, "interesting part")
+
+    def test_add_bookmark_auto_labels_increment(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(2.0)
+        engine.add_bookmark(3.0)
+        assert engine.bookmarks[0][1] == "Bookmark 1"
+        assert engine.bookmarks[1][1] == "Bookmark 2"
+        assert engine.bookmarks[2][1] == "Bookmark 3"
+
+    def test_remove_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(2.0)
+        engine.remove_bookmark(0)
+        assert len(engine.bookmarks) == 1
+        assert engine.bookmarks[0] == (2.0, "Bookmark 2")
+
+    def test_remove_bookmark_invalid_index_is_noop(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.remove_bookmark(5)
+        assert len(engine.bookmarks) == 1
+
+    def test_next_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(3.0)
+        result = engine.next_bookmark(0.5)
+        assert result == 1.0
+
+    def test_next_bookmark_skips_current(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(3.0)
+        result = engine.next_bookmark(1.0)
+        assert result == 3.0
+
+    def test_next_bookmark_returns_none_past_all(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        result = engine.next_bookmark(2.0)
+        assert result is None
+
+    def test_prev_bookmark(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(3.0)
+        result = engine.prev_bookmark(3.5)
+        assert result == 3.0
+
+    def test_prev_bookmark_skips_current(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(3.0)
+        result = engine.prev_bookmark(3.0)
+        assert result == 1.0
+
+    def test_prev_bookmark_returns_none_before_all(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(2.0)
+        result = engine.prev_bookmark(1.0)
+        assert result is None
+
+    def test_bookmarks_sorted_by_time(self, sample_recording):
+        engine = PlaybackEngine(sample_recording)
+        engine.add_bookmark(3.0)
+        engine.add_bookmark(1.0)
+        engine.add_bookmark(2.0)
+        times = [t for t, _ in engine.bookmarks]
+        assert times == [1.0, 2.0, 3.0]
