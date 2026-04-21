@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import platform
 import subprocess
+import time
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -74,11 +75,15 @@ class BettercastApp(App):
         self._refresh_display()
         self._progress_bar = self.query_one("#progress", PlaybackProgressBar)
         self._progress_bar.duration = self.engine.duration
+        self._last_tick_time = time.monotonic()
         self._timer = self.set_interval(1 / 30, self._tick)
         self._terminal.focus()
 
     def _tick(self) -> None:
-        changed = self.engine.advance(1 / 30)
+        now = time.monotonic()
+        actual_dt = now - self._last_tick_time
+        self._last_tick_time = now
+        changed = self.engine.advance(actual_dt)
         if changed:
             self._refresh_display()
         if not self._search_ready and self._progress_bar.flash_message != "Indexing...":
@@ -203,9 +208,10 @@ class BettercastApp(App):
                 self._refresh_display()
             return
 
-        # Original search handling
-        self._search_query = event.value
         search = self.query_one("#search", SearchOverlay)
+        if not search.display:
+            return
+        self._search_query = event.value
         search.display = False
         self._terminal.focus()
         if self._search_query:
@@ -216,13 +222,14 @@ class BettercastApp(App):
 
     def on_input_changed(self, event: Input.Changed) -> None:
         search = self.query_one("#search", SearchOverlay)
-        if search.display:
-            if not self._search_ready:
-                label = search.query_one("#match-count", Static)
-                label.update("[indexing...]")
-            else:
-                count = self.engine.count_matches(event.value)
-                search.update_match_count(count)
+        if not search.display:
+            return
+        if not self._search_ready:
+            label = search.query_one("#match-count", Static)
+            label.update("[indexing...]")
+        else:
+            count = self.engine.count_matches(event.value)
+            search.update_match_count(count)
 
     def action_toggle_loop(self) -> None:
         self.engine.looping = not self.engine.looping
