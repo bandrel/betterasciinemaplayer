@@ -76,6 +76,24 @@ In the bookmark list:
 | `?` | Toggle full help overlay |
 | `q` | Quit |
 
+## Auto-record Terminal Sessions
+
+To automatically record every interactive terminal session with asciinema, add this to your `~/.zshrc`. Sessions are saved to `~/.logs/` and can be replayed with `bettercast`:
+
+```zsh
+if [[ ( "$TERM_PROGRAM" == "vscode" || "$TERM_PROGRAM" == "ghostty" || "$TERM_PROGRAM" == "iTerm.app" ) && -z "${ASCIINEMA_RECORDING:-}" ]]; then
+  if command -v asciinema >/dev/null 2>&1; then
+    mkdir -p "$HOME/.logs"
+    TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+    PREFIX="${TERM_PROGRAM}"
+    export ASCIINEMA_RECORDING=1
+    exec asciinema rec "$HOME/.logs/$PREFIX-$TIMESTAMP.cast" -c "$SHELL"
+  fi
+fi
+```
+
+Adjust the `TERM_PROGRAM` list to match the terminals you want to record. The `ASCIINEMA_RECORDING` guard prevents recursive recording when a shell is spawned inside an already-recorded session.
+
 ## Supported Formats
 
 - **Asciicast v2** — absolute timestamps, `width`/`height` header
