@@ -39,7 +39,7 @@ class V2Parser:
                     data=str(raw[2]),
                 ))
             except (json.JSONDecodeError, IndexError, KeyError, TypeError) as e:
-                raise ValueError(f"Malformed event line: {line!r}") from e
+                raise ValueError(f"Malformed event line ({e}): {line!r}") from e
 
         events.sort(key=lambda e: e.time)
 
