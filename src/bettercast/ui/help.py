@@ -8,6 +8,7 @@ def _build_help_text() -> str:
         ("Space", "Play/Pause"),
         ("← / →", "Seek ±5s"),
         ("Shift+←/→", "Seek ±30s"),
+        ("PgUp/PgDn", "Seek ∓30s"),
         ("[ / ]", "Speed -/+ 0.5x"),
         ("Home/End", "Start/End"),
         (". / ,", "Step forward/back"),

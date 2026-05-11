@@ -37,6 +37,8 @@ class BettercastApp(App):
         Binding("right_square_bracket", "speed_up", "Speed +0.5x"),
         Binding("home", "seek_start", "Start"),
         Binding("end", "seek_end", "End"),
+        Binding("pageup", "seek_back_far", "Seek -30s", show=False),
+        Binding("pagedown", "seek_forward_far", "Seek +30s", show=False),
         Binding("slash", "open_search", "Search"),
         Binding("n", "next_match", "Next match"),
         Binding("N", "prev_match", "Prev match"),
