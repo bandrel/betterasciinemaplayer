@@ -2,6 +2,7 @@ from bettercast.ui.bookmarks import BookmarkOverlay
 from bettercast.ui.help import HelpOverlay, HELP_TEXT
 from bettercast.ui.search import SearchOverlay
 from bettercast.ui.timestamp import TimestampOverlay, parse_timestamp
+from bettercast.ui.toast import ConfirmationToast
 
 
 class TestHelpOverlay:
@@ -120,3 +121,49 @@ class TestBookmarkOverlay:
         overlay._selected = 0
         overlay.action_move_down()
         assert overlay._selected == 0
+
+
+class TestConfirmationToast:
+    def test_default_display_is_none(self):
+        assert "display: none" in ConfirmationToast.DEFAULT_CSS
+
+    def test_is_pending_false_initially(self):
+        toast = ConfirmationToast()
+        assert toast.is_pending is False
+
+    def test_prompt_arms_toast(self):
+        toast = ConfirmationToast()
+        toast.prompt("press X", on_confirm=lambda: None)
+        assert toast.is_pending is True
+
+    def test_prompt_renders_message(self):
+        toast = ConfirmationToast()
+        toast.prompt("press X to do thing", on_confirm=lambda: None)
+        assert toast.message == "press X to do thing"
+
+    def test_confirm_invokes_callback_when_pending(self):
+        toast = ConfirmationToast()
+        calls = []
+        toast.prompt("press X", on_confirm=lambda: calls.append(1))
+        toast.confirm()
+        assert calls == [1]
+
+    def test_confirm_clears_pending(self):
+        toast = ConfirmationToast()
+        toast.prompt("press X", on_confirm=lambda: None)
+        toast.confirm()
+        assert toast.is_pending is False
+
+    def test_confirm_noop_when_not_pending(self):
+        toast = ConfirmationToast()
+        # No prompt() call; calling confirm() should be a safe no-op.
+        toast.confirm()
+        assert toast.is_pending is False
+
+    def test_confirm_clears_callback(self):
+        toast = ConfirmationToast()
+        calls = []
+        toast.prompt("press X", on_confirm=lambda: calls.append(1))
+        toast.confirm()
+        toast.confirm()
+        assert calls == [1]

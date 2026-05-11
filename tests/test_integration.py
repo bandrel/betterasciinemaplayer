@@ -403,6 +403,8 @@ class TestHelpOverlay:
         async with app.run_test() as pilot:
             help_overlay = app.query_one("#help", HelpOverlay)
             assert help_overlay.display is False
+            # First press shows confirmation toast, second opens help.
+            await pilot.press("question_mark")
             await pilot.press("question_mark")
             assert help_overlay.display is True
             await pilot.press("question_mark")
@@ -1102,6 +1104,8 @@ class TestAllKeybindings:
         async with app.run_test() as pilot:
             hud = app.query_one("#help", HelpOverlay)
             assert hud.display is False
+            # First press shows confirmation toast, second opens help.
+            await pilot.press("question_mark")
             await pilot.press("question_mark")
             assert hud.display is True
             await pilot.press("question_mark")
