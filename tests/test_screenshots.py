@@ -97,6 +97,7 @@ class TestScreenshots:
         app = BettercastApp(engine)
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.press("question_mark")
+            await pilot.press("question_mark")
             await pilot.pause(delay=0.1)
             svg = app.export_screenshot()
             _compare_snapshot("help_hud", svg)

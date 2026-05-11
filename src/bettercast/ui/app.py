@@ -17,6 +17,7 @@ from bettercast.ui.progress import PlaybackProgressBar
 from bettercast.ui.search import SearchOverlay
 from bettercast.ui.terminal import TerminalDisplay
 from bettercast.ui.timestamp import TimestampOverlay, parse_timestamp
+from bettercast.ui.toast import ConfirmationToast
 
 
 class BettercastApp(App):
@@ -36,6 +37,8 @@ class BettercastApp(App):
         Binding("right_square_bracket", "speed_up", "Speed +0.5x"),
         Binding("home", "seek_start", "Start"),
         Binding("end", "seek_end", "End"),
+        Binding("pageup", "seek_back_far", "Seek -30s", show=False),
+        Binding("pagedown", "seek_forward_far", "Seek +30s", show=False),
         Binding("slash", "open_search", "Search"),
         Binding("n", "next_match", "Next match"),
         Binding("N", "prev_match", "Prev match"),
@@ -67,6 +70,7 @@ class BettercastApp(App):
         yield SearchOverlay(id="search")
         yield TimestampOverlay(id="timestamp")
         yield HelpOverlay(id="help")
+        yield ConfirmationToast(id="toast")
 
     def on_mount(self) -> None:
         self._terminal = self.query_one("#terminal", TerminalDisplay)
@@ -281,7 +285,20 @@ class BettercastApp(App):
 
     def action_toggle_help(self) -> None:
         help_overlay = self.query_one("#help", HelpOverlay)
-        help_overlay.display = not help_overlay.display
+        toast = self.query_one("#toast", ConfirmationToast)
+        if help_overlay.display:
+            help_overlay.display = False
+            return
+        if toast.is_pending:
+            toast.confirm()
+            return
+        toast.prompt(
+            "Press ? again for keyboard shortcuts",
+            on_confirm=self._open_help,
+        )
+
+    def _open_help(self) -> None:
+        self.query_one("#help", HelpOverlay).display = True
 
     # --- Copy ---
 
